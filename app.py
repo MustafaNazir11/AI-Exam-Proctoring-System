@@ -90,17 +90,6 @@ def adminprofile():
 def stud_profile():
     return render_template('profile.html')
 
-<<<<<<< HEAD
-@app.route('/profile')
-def profile():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('profile.html')
-
-
-
-=======
->>>>>>> ef44fdacd9303b0029e073932764ef8341a78bf0
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -148,7 +137,7 @@ def admin():
 
 @app.route("/dashboard")
 def dashboard():
-    return render_template("dashboard.html")
+    return render_template("proctor-dashboard.html")
 
 @app.route("/exam")
 def exam():
@@ -430,4 +419,4 @@ def view_screenshots():
 if __name__ == "__main__":
     init_db()
     # Flask will start instantly; ML models initialize lazily
-    app.run(host="127.0.0.1", port=5000, debug=True, threaded=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)

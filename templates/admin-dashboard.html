@@ -1,213 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Dashboard – ProctorExam</title>
+  <title>Admin Dashboard - ProctorExam</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
-  <style>
-    :root {
-      --accent: #007bff;
-      --accent-light: #66b3ff;
-      --text-dark: #1f2937;
-      --text-light: #ffffff;
-      --card-bg: rgba(255, 255, 255, 0.7);
-      --sidebar-bg: rgba(255, 255, 255, 0.55);
-      --border-light: rgba(0, 0, 0, 0.08);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html, body {
-      height: 100%;
-      overflow: hidden;
-      font-family: "Poppins", sans-serif;
-      color: var(--text-dark);
-      background: linear-gradient(135deg, #e6f1ff 0%, #ffffff 100%);
-    }
-
-    /* === Animated Glowing Background === */
-    #bgCanvas {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background: radial-gradient(circle at center, #b8dbff, #f3f8ff 85%);
-      transition: background 0.4s ease;
-    }
-
-    .dashboard {
-      display: flex;
-      min-height: 100vh;
-      position: relative;
-      backdrop-filter: blur(10px);
-      z-index: 1;
-    }
-
-    /* Sidebar */
-    aside.sidebar {
-      width: 240px;
-      padding: 2rem 1rem;
-      background: var(--sidebar-bg);
-      border-right: 1px solid var(--border-light);
-      box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
-      backdrop-filter: blur(12px);
-    }
-
-    .brand {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      margin-bottom: 2rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .highlight {
-      color: var(--accent);
-    }
-
-    nav.menu a {
-      display: block;
-      color: var(--text-dark);
-      text-decoration: none;
-      padding: 0.7rem 0.5rem;
-      border-radius: 8px;
-      transition: all 0.35s ease;
-    }
-
-    nav.menu a:hover {
-      background: rgba(255, 255, 255, 0.9);
-      color: var(--accent);
-      padding-left: 1rem;
-      box-shadow: 0 0 15px rgba(0, 120, 255, 0.15);
-      transform: translateX(3px);
-    }
-
-    .logout-btn {
-      margin-top: 1.5rem;
-      width: 100%;
-      background: #e9ecef;
-      border: none;
-      color: #333;
-      padding: 0.8rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.3s ease;
-    }
-
-    .logout-btn:hover {
-      background: #dbeafe;
-      color: var(--accent);
-      box-shadow: 0 4px 10px rgba(0, 120, 255, 0.2);
-    }
-
-    /* Main Content */
-    main.main-content {
-      flex: 1;
-      padding: 2rem 3rem;
-      background: rgba(255, 255, 255, 0.6);
-      backdrop-filter: blur(20px);
-      overflow-y: auto;
-    }
-
-    header.main-header {
-      margin-bottom: 2rem;
-      text-align: center;
-    }
-
-    header.main-header h1 {
-      color: var(--accent);
-      font-size: 2rem;
-      text-shadow: 0 0 8px rgba(0, 123, 255, 0.25);
-    }
-
-    /* Cards */
-    .stats, .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1.2rem;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border-radius: 18px;
-      padding: 1.5rem;
-      text-align: center;
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-      transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
-      position: relative;
-      overflow: hidden;
-      animation: float 6s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-8px); }
-    }
-
-    .card:hover {
-      transform: translateY(-10px);
-      border-color: rgba(0,120,255,0.4);
-      box-shadow: 0 0 25px rgba(0,120,255,0.25), 0 6px 24px rgba(0,120,255,0.15);
-    }
-
-    .card h3, .card h2 {
-      margin-bottom: 0.6rem;
-      color: var(--text-dark);
-    }
-
-    .card p {
-      font-size: 1rem;
-      color: #475569;
-      margin-bottom: 1rem;
-    }
-
-    .btn-primary, .btn-secondary {
-      border: none;
-      border-radius: 12px;
-      padding: 0.7rem 1.2rem;
-      cursor: pointer;
-      font-weight: 500;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: white;
-      box-shadow: 0 4px 15px rgba(0, 120, 255, 0.2);
-    }
-
-    .btn-secondary {
-      background: #e5f0ff;
-      color: var(--text-dark);
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 25px rgba(0, 120, 255, 0.25);
-    }
-
-    .btn-secondary:hover {
-      background: #dbeafe;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 120, 255, 0.15);
-    }
-
-    @media (max-width: 768px) {
-      .dashboard { flex-direction: column; }
-      aside.sidebar { width: 100%; display: flex; justify-content: space-around; }
-      main.main-content { padding: 1rem; }
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}" />
 </head>
 
 <body>
@@ -238,9 +37,18 @@
       </header>
 
       <section class="stats">
-        <div class="card"><h3><i class="fas fa-bolt"></i> Active Exams</h3><p id="activeExams">0</p></div>
-        <div class="card"><h3><i class="fas fa-user-graduate"></i> Total Students</h3><p id="totalStudents">0</p></div>
-        <div class="card"><h3><i class="fas fa-shield-alt"></i> Suspicious Activities</h3><p id="suspiciousActivities">0</p></div>
+        <div class="card">
+          <h3><i class="fas fa-bolt"></i> Active Exams</h3>
+          <p id="activeExams">0</p>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-user-graduate"></i> Total Students</h3>
+          <p id="totalStudents">0</p>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-shield-alt"></i> Suspicious Activities</h3>
+          <p id="suspiciousActivities">0</p>
+        </div>
       </section>
 
       <section class="features" style="margin-top:2rem;">
@@ -258,100 +66,10 @@
     </main>
   </div>
 
-  <script>
-    // === Upload Buttons ===
-    document.getElementById('uploadBtn').onclick = () => {
-      window.location.href = '{{ url_for("input_questions") }}';
-    };
-    document.getElementById('monitorBtn').onclick = () => {
-      window.location.href = 'http://127.0.0.1:5000/dashboard';
-    };
+  <script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="{{ url_for('static', filename='js/admin-proctor.js') }}"></script>
 
-    // === Logout Button ===
-    document.getElementById('logoutBtn').onclick = () => {
-      if (confirm("Are you sure you want to logout?")) {
-        window.location.href = "http://127.0.0.1:5000/login";
-      }
-    };
-
-    // === Counter Animation ===
-    const counters = [
-      { id: "activeExams", end: 23 },
-      { id: "totalStudents", end: 142 },
-      { id: "suspiciousActivities", end: 4 }
-    ];
-    counters.forEach(c => {
-      let n = 0;
-      const el = document.getElementById(c.id);
-      const tick = () => {
-        n += c.end / 50;
-        if (n < c.end) {
-          el.textContent = Math.ceil(n);
-          requestAnimationFrame(tick);
-        } else {
-          el.textContent = c.end;
-        }
-      };
-      tick();
-    });
-
-    // === Animated Background (from Profile Page) ===
-    const canvas = document.getElementById("bgCanvas");
-    const ctx = canvas.getContext("2d");
-    let w, h;
-    let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    let lines = [];
-
-    function resize() {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
-    }
-    window.addEventListener("resize", resize);
-    resize();
-
-    window.addEventListener("mousemove", (e) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-      const moveX = (mouse.x / window.innerWidth) * 100;
-      const moveY = (mouse.y / window.innerHeight) * 100;
-      canvas.style.background = `radial-gradient(circle at ${moveX}% ${moveY}%, #b8dbff, #f3f8ff 85%)`;
-    });
-
-    for (let i = 0; i < 120; i++) {
-      lines.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        dx: (Math.random() - 0.5) * 1.5,
-        dy: (Math.random() - 0.5) * 1.5,
-        hue: 210 + Math.random() * 40
-      });
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, w, h);
-      const glow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 250);
-      glow.addColorStop(0, "rgba(0, 123, 255, 0.1)");
-      glow.addColorStop(1, "rgba(255, 255, 255, 0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, w, h);
-
-      lines.forEach(l => {
-        l.x += l.dx; l.y += l.dy;
-        if (l.x < 0 || l.x > w) l.dx *= -1;
-        if (l.y < 0 || l.y > h) l.dy *= -1;
-        ctx.beginPath();
-        const x2 = l.x + Math.sin(Date.now() * 0.0015 + l.x * 0.02) * 35;
-        const y2 = l.y + Math.cos(Date.now() * 0.0015 + l.y * 0.02) * 35;
-        ctx.moveTo(l.x, l.y);
-        ctx.lineTo(x2, y2);
-        ctx.strokeStyle = `hsla(${l.hue}, 100%, 50%, 0.2)`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
-      requestAnimationFrame(draw);
-    }
-    draw();
-  </script>
 </body>
-</html>
 
+</html>
