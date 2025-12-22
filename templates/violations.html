@@ -144,7 +144,7 @@
   <canvas id="bgCanvas"></canvas>
 
   <div class="container">
-    <h1><i class="fas fa-exclamation-triangle"></i> Violation Logs</h1>
+    <h1><i class="fas fa-exclamation-triangle"></i> Violation Logs{% if peer_id %} - Peer: {{ peer_id }}{% endif %}</h1>
 
     {% if logs and logs|length > 0 %}
       <table>

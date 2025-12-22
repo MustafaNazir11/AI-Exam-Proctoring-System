@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camera Preview – ProctorExam</title>
+
+  <!-- Font & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/preview.css') }}">
+</head>
+
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <header class="exam-header">
+    <h1><i class="fas fa-video"></i> Camera Preview</h1>
+    {% if session.get('email') %}
+    <div class="user-info">
+      👤 {{ session.get('email') }}
+    </div>
+    {% endif %}
+  </header>
+
+  <main class="exam-container" id="exam-form">
+    <div class="instructions-box">
+      <p class="instructions">
+        Click <strong>Start Exam</strong> to begin. Your camera will turn on automatically.
+      </p>
+      <div id="focusWarning" style="color:red; font-weight:600; display:none;"></div>
+      <div id="violationDisplay" style="color:red; font-weight:600;"></div>
+    </div>
+
+    <div class="video-section">
+      <div class="video-box">
+        <video id="webcam" autoplay playsinline muted></video>
+      </div>
+      <canvas id="frameCanvas" width="640" height="480" style="display:none;"></canvas>
+      <p class="status">Monitoring will start when you proceed.</p>
+    </div>
+
+    <div class="exam-buttons">
+      <button id="proceedBtn" class="primary-btn">
+        <i class="fas fa-play"></i> Start Exam
+      </button>
+      <button id="previewBtn" class="secondary-btn">
+        <i class="fas fa-video"></i> Preview Camera
+      </button>
+    </div>
+  </main>
+
+  <footer class="exam-footer">
+    &copy; 2025 AI Proctoring System. All rights reserved.
+  </footer>
+
+  <!-- Keep your logic scripts -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="{{ url_for('static', filename='js/preview.js') }}"></script>
+
+</body>
+</html>
+

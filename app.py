@@ -77,7 +77,7 @@ def login():
             session['email'] = student['email']
             session['user_type'] = 'student'
             conn.close()
-            return redirect(url_for('test'))
+            return redirect(url_for('preview'))
         conn.close()
         return "Invalid credentials"
     return render_template('login.html')
@@ -139,13 +139,15 @@ def admin():
 def dashboard():
     return render_template("proctor-dashboard.html")
 
-@app.route("/exam")
-def exam():
-    return render_template("exam.html", email=session.get("email"))
-
 @app.route("/violations")
 def show_violations():
     return render_template("violations.html", logs=violation_logs)
+
+@app.route("/violations/<peer_id>")
+def show_peer_violations(peer_id):
+    # Filter violations for specific peer ID
+    peer_logs = [log for log in violation_logs if log.get('peer_id') == peer_id]
+    return render_template("violations.html", logs=peer_logs, peer_id=peer_id)
 
 # ------------------ QUIZ ----------------------
 @app.route("/input-questions", methods=['GET', 'POST'])
@@ -170,6 +172,19 @@ def input_questions():
         conn.close()
         return f"✅ {count} questions added successfully!"
     return render_template('questions.html')
+
+@app.route("/preview")
+def preview():
+    return render_template("preview.html", email=session.get("email"))
+
+@app.route("/exam")
+def exam():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM questions")
+    questions = cursor.fetchall()
+    conn.close()
+    return render_template("exam.html", questions=questions)
 
 @app.route("/quiz")
 def quiz():
@@ -374,14 +389,29 @@ def tab_violation():
     return jsonify(response)
 
 # ------------ PEER ID HANDLING -----------------
+proctor_ids = set()  # Track proctor peer IDs
+
 @app.route("/store-peer-id", methods=["POST"])
 def store_peer_id():
     data = request.json
     peer_id = data.get("peerId")
-    if peer_id and peer_id not in peer_ids:
-        peer_ids.add(peer_id)
+    peer_type = data.get("type", "student")  # student or proctor
+    
+    if peer_id:
+        if peer_type == "proctor":
+            proctor_ids.add(peer_id)
+            print(f"Proctor registered: {peer_id}")
+        else:
+            # Remove any existing peer IDs for this session to prevent duplicates
+            peer_ids.discard(peer_id)  # Remove if exists
+            peer_ids.add(peer_id)  # Add fresh
+            print(f"Student registered: {peer_id}")
         return jsonify({"message": "Peer ID stored", "peerId": peer_id})
-    return jsonify({"message": "Peer ID missing or duplicate"}), 400
+    return jsonify({"message": "Peer ID missing"}), 400
+
+@app.route("/get-proctor-ids")
+def get_proctor_ids():
+    return jsonify(list(proctor_ids))
 
 @app.route("/get-peer-ids")
 def get_peer_ids():
@@ -391,9 +421,14 @@ def get_peer_ids():
 def delete_peer_id():
     data = request.json
     peer_id = data.get("peerId")
-    if peer_id and peer_id in peer_ids:
-        peer_ids.remove(peer_id)
-        violation_counts.pop(peer_id, None)
+    peer_type = data.get("type", "student")
+    
+    if peer_id:
+        if peer_type == "proctor" and peer_id in proctor_ids:
+            proctor_ids.remove(peer_id)
+        elif peer_id in peer_ids:
+            peer_ids.remove(peer_id)
+            violation_counts.pop(peer_id, None)
         return jsonify({"message": "Peer ID deleted", "peerId": peer_id})
     return jsonify({"message": "Peer ID not found"}), 404
 

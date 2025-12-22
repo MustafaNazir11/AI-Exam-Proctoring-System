@@ -1,0 +1,137 @@
+:root {
+  --accent: #007bff;
+  --accent-light: #66b3ff;
+  --text-dark: #1f1f1f;
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --border-light: rgba(0,0,0,0.1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-dark);
+  background: linear-gradient(135deg, #e6f1ff 0%, #ffffff 100%);
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#bgCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at center, #b5d8ff, #f3f8ff);
+}
+
+.exam-header {
+  text-align: center;
+  margin: 40px 0 20px;
+}
+
+.exam-header h1 {
+  font-size: 2rem;
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(0,123,255,0.25);
+  margin-bottom: 10px;
+}
+
+.user-info {
+  color: #333;
+  font-weight: 500;
+  background: rgba(255,255,255,0.6);
+  border-radius: 10px;
+  padding: 6px 15px;
+  display: inline-block;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.exam-container {
+  width: 90%;
+  max-width: 700px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  backdrop-filter: blur(20px);
+  padding: 30px;
+  text-align: center;
+  animation: fadeUp 0.7s ease-out;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.instructions-box {
+  margin-bottom: 20px;
+}
+
+.video-box {
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 20px 0;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+video {
+  width: 100%;
+  border-radius: 12px;
+  background-color: black;
+}
+
+.status {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+.exam-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.primary-btn {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(0,123,255,0.25);
+}
+
+.secondary-btn {
+  background: #e5f0ff;
+  color: var(--text-dark);
+  box-shadow: 0 4px 15px rgba(0,123,255,0.1);
+}
+
+.primary-btn:hover {
+  background: var(--accent-light);
+  transform: translateY(-3px);
+}
+
+.secondary-btn:hover {
+  background: #dbeafe;
+  transform: translateY(-2px);
+}
+
+.exam-footer {
+  text-align: center;
+  padding: 20px 0;
+  font-size: 0.9rem;
+  color: #555;
+  margin-top: 40px;
+}

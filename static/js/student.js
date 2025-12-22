@@ -78,13 +78,22 @@ document.addEventListener('DOMContentLoaded', function () {
     let peerId = null;
 
     // 🎥 Start webcam silently
-    navigator.mediaDevices.getUserMedia({ video: true })
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
             video.srcObject = stream;
+
+            console.log("✅ Student camera stream ready");
+
+            // 🔥 VERY IMPORTANT: answer proctor call
+            peer.on("call", (call) => {
+                console.log("📞 Incoming call from proctor");
+                call.answer(stream); // ✅ THIS WAS MISSING
+            });
         })
         .catch(() => {
             alert("⚠️ Camera access denied. Exam cannot proceed.");
         });
+
 
     // 🔗 Generate PeerJS ID
     const peer = new Peer();
@@ -103,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!peerId || !video.videoWidth || !video.videoHeight) return;
 
         // ⏱ Temporarily show webcam to avoid black image
-        
+
 
         // Wait a moment to ensure frame is available
         setTimeout(() => {
@@ -113,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function () {
             canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
 
             const base64Image = canvas.toDataURL("image/png");
-            
+
 
             fetch("/upload-screenshot", {
                 method: "POST",
@@ -122,56 +131,56 @@ document.addEventListener('DOMContentLoaded', function () {
             })
                 .then(res => res.json())
                 .then(data => {
-    console.log("✅ Screenshot uploaded to Cloudinary");
-    console.log("🌩️ Cloudinary URL:", data.cloudinary_url);
+                    console.log("✅ Screenshot uploaded to Cloudinary");
+                    console.log("🌩️ Cloudinary URL:", data.cloudinary_url);
 
-    if (data.message?.includes("Suspicious")) {
-        violationCount++;
+                    if (data.message?.includes("Suspicious")) {
+                        violationCount++;
 
-        console.log("🚨 Violation Detected:", data.reasons.join(", "));
-        console.log("📸 Evidence URL:", data.cloudinary_url);
-        console.log("⚠️ Total Violations:", violationCount);
+                        console.log("🚨 Violation Detected:", data.reasons.join(", "));
+                        console.log("📸 Evidence URL:", data.cloudinary_url);
+                        console.log("⚠️ Total Violations:", violationCount);
 
-        // Show styled popup with SweetAlert2
-        Swal.fire({
-            icon: 'warning',
-            title: 'Violation Detected!',
-            html: `
+                        // Show styled popup with SweetAlert2
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Violation Detected!',
+                            html: `
                 <strong>Reason:</strong> ${data.reasons.join(", ")}<br>
                 <strong>Total Violations:</strong> ${violationCount}
             `,
-            confirmButtonText: 'OK',
-            customClass: {
-                popup: 'violation-alert'
-            }
-        });
+                            confirmButtonText: 'OK',
+                            customClass: {
+                                popup: 'violation-alert'
+                            }
+                        });
 
-        // Hide the image display
-        violationDisplay.style.display = "none";
-        violationDisplay.innerHTML = "";
+                        // Hide the image display
+                        violationDisplay.style.display = "none";
+                        violationDisplay.innerHTML = "";
 
-        if (data.action === "stop_exam") {
-            console.log("🛑 Exam forcibly ended due to violations.");
-            quizContainer.style.display = "none";
-            examEnded.style.display = "block";
+                        if (data.action === "stop_exam") {
+                            console.log("🛑 Exam forcibly ended due to violations.");
+                            quizContainer.style.display = "none";
+                            examEnded.style.display = "block";
 
-            const stream = video.srcObject;
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-            }
+                            const stream = video.srcObject;
+                            if (stream) {
+                                stream.getTracks().forEach(track => track.stop());
+                                video.srcObject = null;
+                            }
 
-            Swal.fire({
-                icon: 'error',
-                title: 'Exam Ended',
-                text: 'Exam forcibly terminated due to repeated violations.',
-                confirmButtonText: 'OK'
-            });
-        }
-    } else {
-        console.log("✅ Screenshot analyzed: No violation detected.");
-    }
-})
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Exam Ended',
+                                text: 'Exam forcibly terminated due to repeated violations.',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    } else {
+                        console.log("✅ Screenshot analyzed: No violation detected.");
+                    }
+                })
 
 
                 .catch(err => console.error("Screenshot upload failed:", err));

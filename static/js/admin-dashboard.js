@@ -1,15 +1,15 @@
 // === Upload Buttons ===
 document.getElementById('uploadBtn').onclick = () => {
-  window.location.href = '/input_questions';
+  window.location.href = '/input-questions';
 };
 document.getElementById('monitorBtn').onclick = () => {
-  window.location.href = 'http://127.0.0.1:5000/dashboard';
+  window.location.href = '/dashboard';
 };
 
 // === Logout Button ===
 document.getElementById('logoutBtn').onclick = () => {
   if (confirm("Are you sure you want to logout?")) {
-    window.location.href = "http://127.0.0.1:5000/login";
+    window.location.href = "/login";
   }
 };
 

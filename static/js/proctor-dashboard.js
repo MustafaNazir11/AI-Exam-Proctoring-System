@@ -10,11 +10,59 @@ let peerReady = false;
 
 const studentGallery = document.getElementById("studentGallery");
 
-// When admin PeerJS is ready
+// Add manual test button to force connection
+function addTestButton() {
+  if (document.getElementById('forceConnectBtn')) return;
+  
+  const btn = document.createElement('button');
+  btn.id = 'forceConnectBtn';
+  btn.textContent = 'Force Connect Students';
+  btn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:orange;color:white;border:none;cursor:pointer;';
+  btn.onclick = () => {
+    console.log('🔧 Forcing student connections...');
+    // Get current students and try to call them
+    fetch('/get-peer-ids')
+      .then(res => res.json())
+      .then(studentIds => {
+        console.log('📞 Attempting to call students:', studentIds);
+        studentIds.forEach(studentId => {
+          console.log('📞 Calling student:', studentId);
+          const call = peer.call(studentId, null); // Call student without sending video
+          if (call) {
+            call.on('stream', (stream) => {
+              console.log('🎥 Received stream from:', studentId);
+              const card = document.getElementById(`card-${studentId}`);
+              if (card) {
+                const video = card.querySelector('video');
+                video.srcObject = stream;
+                video.play();
+              }
+            });
+          }
+        });
+      });
+  };
+  document.body.appendChild(btn);
+}
+
+// Call this when peer is ready
 peer.on("open", (adminPeerId) => {
   console.log("Proctor Peer ID:", adminPeerId);
   peerReady = true;
-  fetchActiveStudents();
+  
+  addTestButton();
+  
+  // Register as proctor
+  fetch("/store-peer-id", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ peerId: adminPeerId, type: "proctor" })
+  }).then(() => {
+    fetchActiveStudents();
+    
+    // Refresh student list every 5 seconds
+    setInterval(fetchActiveStudents, 5000);
+  }).catch(err => console.error("Failed to register proctor:", err));
 });
 
 
@@ -23,16 +71,22 @@ function fetchActiveStudents() {
   fetch("/get-peer-ids")
     .then(res => res.json())
     .then(peerIds => {
-      studentGallery.innerHTML = "";
-
+      console.log("📋 Active students:", peerIds);
+      
+      // Only add new students, don't recreate existing cards
       peerIds.forEach(peerId => {
         if (!document.getElementById(`card-${peerId}`)) {
           createStudentCard(peerId);
-
-          // ⏱️ small delay avoids race condition
-          setTimeout(() => {
-            callStudent(peerId);
-          }, 800);
+          callStudent(peerId);
+        }
+      });
+      
+      // Remove cards for students no longer active
+      const existingCards = document.querySelectorAll('.student-card');
+      existingCards.forEach(card => {
+        const cardPeerId = card.id.replace('card-', '');
+        if (!peerIds.includes(cardPeerId)) {
+          card.remove();
         }
       });
     })
@@ -50,44 +104,66 @@ function createStudentCard(peerId) {
     <video autoplay playsinline muted></video>
     <div class="info">Peer ID: ${peerId}</div>
     <div class="violation">🟢 Live</div>
+    <div class="card-buttons">
+      <button class="view-violations" onclick="viewViolations('${peerId}')">
+        <i class="fas fa-exclamation-triangle"></i> View Violations
+      </button>
+    </div>
   `;
 
   studentGallery.appendChild(card);
 }
 
-// Call student & attach stream
-function callStudent(studentPeerId) {
-  if (!peerReady) {
-    console.warn("Peer not ready yet");
-    return;
-  }
+// View violations for specific peer
+function viewViolations(peerId) {
+  window.open(`/violations/${peerId}`, '_blank');
+}
 
-  const call = peer.call(studentPeerId, null);
-
-  // 🔒 SAFETY CHECK (THIS FIXES YOUR ERROR)
-  if (!call) {
-    console.warn("Call failed for:", studentPeerId);
-    return;
-  }
-
+// Handle incoming calls from students
+peer.on("call", (call) => {
+  console.log("📞 Incoming call from:", call.peer);
+  
+  // Answer the call (proctor doesn't need to send video)
+  call.answer();
+  
   call.on("stream", (stream) => {
-    const card = document.getElementById(`card-${studentPeerId}`);
-    if (!card) return;
-
-    const video = card.querySelector("video");
-    video.srcObject = stream;
+    console.log("🎥 Stream received from:", call.peer);
+    
+    let card = document.getElementById(`card-${call.peer}`);
+    if (!card) {
+      console.log("Creating card for new peer:", call.peer);
+      createStudentCard(call.peer);
+      card = document.getElementById(`card-${call.peer}`);
+    }
+    
+    if (card) {
+      const video = card.querySelector("video");
+      video.srcObject = stream;
+      video.muted = true;
+      video.play().then(() => {
+        console.log("✅ Video playing for:", call.peer);
+      }).catch(err => console.warn("Autoplay blocked:", err));
+      
+      card.querySelector(".violation").innerText = "🟢 Connected";
+    }
   });
-
-  call.on("error", err => {
-    console.error("Call error:", err);
+  
+  call.on("error", (err) => {
+    console.error("❌ Call error for", call.peer, err);
   });
-
+  
   call.on("close", () => {
-    const card = document.getElementById(`card-${studentPeerId}`);
+    const card = document.getElementById(`card-${call.peer}`);
     if (card) {
       card.querySelector(".violation").innerText = "🔴 Disconnected";
     }
   });
+});
+
+// Request connection from student (student will call us back)
+function callStudent(studentPeerId) {
+  console.log("📞 Requesting connection from:", studentPeerId);
+  // Just create the card - student will initiate the call
 }
 
 
