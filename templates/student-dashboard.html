@@ -279,6 +279,7 @@
         </div>
 
         <ul class="nav-menu">
+          <li><a href="/preview"><i class="fas fa-video"></i> Camera Preview</a></li>
           <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
           <li><a href="#" id="dashboard-link"><i class="fas fa-home"></i> Dashboard</a></li>
           <li><a href="#"><i class="fas fa-chart-line"></i> Performance</a></li>
@@ -399,7 +400,7 @@
       document.querySelector('.fa-bell').closest('.action-btn').addEventListener('click',()=>{alert('You have 3 new notifications');});
       document.querySelector('.fa-envelope').closest('.action-btn').addEventListener('click',()=>{alert('No new messages');});
       document.querySelector('.fa-question-circle').closest('.action-btn').addEventListener('click',()=>{alert('Help center will open in a new window');});
-      document.querySelectorAll('.exam-action').forEach(btn=>{btn.addEventListener('click',function(){if(this.textContent.includes('Start')){window.location.href='/exam';}else{alert('Exam details will be shown here');}});});
+      document.querySelectorAll('.exam-action').forEach(btn=>{btn.addEventListener('click',function(){if(this.textContent.includes('Start')){window.location.href='/preview';}else{alert('Exam details will be shown here');}});});
     });
   </script>
 </body>

@@ -30,6 +30,7 @@
 
     <main class="quiz-body">
       <form method="POST" action="/submit" id="quiz-form">
+        <input type="hidden" id="peer-id-field" name="peer_id" value="">
         {% for q in questions %}
         <div class="question-block {% if loop.first %}active{% endif %}">
           <p class="question-text animate__animated animate__fadeIn"><strong>Q{{ loop.index }}: {{ q[1] }}</strong></p>
@@ -68,13 +69,12 @@
       </form>
     </main>
 
+    <!-- Violation Display -->
+    <div id="violationDisplay" style="position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 300px;"></div>
+    <div id="focusWarning" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,0,0,0.9); color: white; padding: 20px; border-radius: 10px; z-index: 1001; display: none; text-align: center; font-weight: bold;"></div>
+    
     <!-- Hidden Webcam for Proctoring -->
     <video id="webcam" autoplay muted playsinline style="visibility:hidden; width:0; height:0;"></video>
-
-    <div id="violationDisplay" style="display:none; color:red; font-weight:bold; text-align:center; padding:10px;"></div>
-    <div id="examEnded" style="display:none; background:#ffdddd; padding:20px; text-align:center; font-weight:bold;">
-      🚫 Exam Terminated due to violations.
-    </div>
   </div>
 
   <!-- ✨ Background Animation Script -->

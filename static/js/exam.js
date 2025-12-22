@@ -29,6 +29,7 @@
   let lastFrameSentAt = 0;
   let lastViolationSent = new Map();
   let peer = null;
+  let violationCount = 0;
 
   // ------------------ Utilities ------------------
   function safeSetLocal(key, value) {
@@ -54,6 +55,11 @@
       console.log("🆔 Student Peer ID:", id);
       studentPeerId = id;
       safeSetLocal("exam_peer_id", id);
+      
+      // Update hidden form field
+      const peerIdField = document.getElementById("peer-id-field");
+      if (peerIdField) peerIdField.value = id;
+      
       sendPeerIdToServer(id);
     });
 
@@ -206,8 +212,10 @@
         })
         .then(res => res.json().catch(()=>({})))
         .then(data => {
-          if (data.reasons && violationDisplay) {
-            violationDisplay.innerHTML = data.reasons.join("<br>");
+          if (data.reasons && data.reasons.length > 0) {
+            violationCount++;
+            showViolationPopup(data.reasons, violationCount);
+            updateViolationDisplay(data.reasons, violationCount);
           }
           if (data.action === "stop_exam") {
             endExamDueToViolations();
@@ -223,16 +231,66 @@
   }
 
   function endExamDueToViolations() {
+    cleanupAndExit("Exam terminated due to repeated violations.");
+  }
+
+  function cleanupAndExit(message) {
     try {
       if (localStream) {
         localStream.getTracks().forEach(t => t.stop());
       }
       if (webcam) webcam.srcObject = null;
+      if (peer && !peer.destroyed) {
+        peer.destroy();
+      }
     } catch (e) { console.warn(e); }
 
+    // Delete peer ID from server
+    const peerIdToDelete = studentPeerId || safeGetLocal("exam_peer_id");
+    if (peerIdToDelete) {
+      fetch(`${backendURL}/delete-peer-id`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ peerId: peerIdToDelete, type: "student" })
+      }).catch(e => console.warn("Cleanup error:", e));
+    }
+
     safeSetLocal("exam_active", "0");
-    alert("Exam terminated due to repeated violations.");
+    safeSetLocal("exam_peer_id", "");
+    alert(message);
     window.location.href = "/";
+  }
+
+  // ------------------ Violation Display Functions ------------------
+  function showViolationPopup(reasons, count) {
+    const reasonText = reasons.join(", ");
+    const message = `⚠️ VIOLATION DETECTED!\n\nReason: ${reasonText}\nTotal Violations: ${count}/5\n\n${count >= 5 ? 'EXAM WILL BE TERMINATED!' : 'Please maintain exam integrity.'}`;
+    
+    // Use SweetAlert2 if available, otherwise use regular alert
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Violation Detected!',
+        text: `${reasonText}\nTotal Violations: ${count}/5`,
+        confirmButtonText: 'I Understand',
+        allowOutsideClick: false,
+        timer: count >= 5 ? undefined : 5000
+      });
+    } else {
+      alert(message);
+    }
+  }
+
+  function updateViolationDisplay(reasons, count) {
+    if (violationDisplay) {
+      violationDisplay.style.display = "block";
+      violationDisplay.innerHTML = `
+        <div style="background: #ffebee; border: 2px solid #f44336; border-radius: 8px; padding: 15px; margin: 10px 0;">
+          <strong style="color: #d32f2f;">⚠️ Violations: ${count}/5</strong><br>
+          <span style="color: #666;">Latest: ${reasons.join(", ")}</span>
+        </div>
+      `;
+    }
   }
 
   // ------------------ Exam Protection ------------------
@@ -306,9 +364,12 @@
     .then(res => res.json().catch(() => ({})))
     .then(data => {
       console.log("Tab violation logged:", reason, data);
+      violationCount = data.count || violationCount + 1;
+      showViolationPopup([reason], violationCount);
+      updateViolationDisplay([reason], violationCount);
       if (focusWarning) {
         focusWarning.style.display = "block";
-        focusWarning.textContent = `⚠️ ${reason} — Violations: ${data.count || "-"}`;
+        focusWarning.textContent = `⚠️ ${reason} — Violations: ${violationCount}`;
       }
       if (data.action === "stop_exam") {
         endExamDueToViolations();
@@ -336,6 +397,9 @@
   document.addEventListener('DOMContentLoaded', function() {
     console.log("🚀 Initializing exam...");
     
+    // Initialize quiz navigation
+    initializeQuizNavigation();
+    
     // Mark exam as active
     safeSetLocal("exam_active", "1");
     
@@ -353,5 +417,73 @@
       document.documentElement.requestFullscreen().catch(()=>{});
     } catch(e){}
   });
+
+  // ------------------ Quiz Navigation Logic ------------------
+  function initializeQuizNavigation() {
+    const questions = document.querySelectorAll('.question-block');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const currentQuestionSpan = document.getElementById('current-question');
+    const totalQuestionsSpan = document.getElementById('total-questions');
+    const progressBar = document.querySelector('.progress-bar');
+    
+    let currentQuestion = 0;
+    const totalQuestions = questions.length;
+    
+    if (totalQuestionsSpan) totalQuestionsSpan.textContent = totalQuestions;
+    
+    function showQuestion(index) {
+      questions.forEach((q, i) => {
+        q.classList.toggle('active', i === index);
+      });
+      
+      if (currentQuestionSpan) currentQuestionSpan.textContent = index + 1;
+      if (progressBar) {
+        const progress = ((index + 1) / totalQuestions) * 100;
+        progressBar.style.width = progress + '%';
+      }
+      
+      // Update button visibility
+      if (prevBtn) prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
+      if (nextBtn) nextBtn.style.display = index === totalQuestions - 1 ? 'none' : 'inline-block';
+      if (submitBtn) submitBtn.style.display = index === totalQuestions - 1 ? 'inline-block' : 'none';
+    }
+    
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (currentQuestion > 0) {
+          currentQuestion--;
+          showQuestion(currentQuestion);
+        }
+      });
+    }
+    
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (currentQuestion < totalQuestions - 1) {
+          currentQuestion++;
+          showQuestion(currentQuestion);
+        }
+      });
+    }
+    
+    if (submitBtn) {
+      submitBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to submit your exam?')) {
+          cleanupAndExit("Exam submitted successfully!");
+          // Allow form submission after cleanup
+          setTimeout(() => {
+            document.getElementById('quiz-form').submit();
+          }, 100);
+        }
+      });
+    }
+    
+    // Initialize first question
+    if (totalQuestions > 0) {
+      showQuestion(0);
+    }
+  }
 
 })();

@@ -45,7 +45,7 @@ function addTestButton() {
   document.body.appendChild(btn);
 }
 
-// Call this when peer is ready
+// When admin PeerJS is ready
 peer.on("open", (adminPeerId) => {
   console.log("Proctor Peer ID:", adminPeerId);
   peerReady = true;
@@ -63,6 +63,16 @@ peer.on("open", (adminPeerId) => {
     // Refresh student list every 5 seconds
     setInterval(fetchActiveStudents, 5000);
   }).catch(err => console.error("Failed to register proctor:", err));
+});
+
+// Reconnect when page becomes visible (returning from violations page)
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && peerReady) {
+    console.log('🔄 Page visible again, refreshing connections...');
+    setTimeout(() => {
+      fetchActiveStudents();
+    }, 1000);
+  }
 });
 
 

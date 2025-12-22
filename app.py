@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
 import os, base64, sqlite3, io
 from datetime import datetime
 import numpy as np
@@ -50,9 +51,9 @@ def get_db_connection():
 
 # ------------- CLOUDINARY CONFIG --------------
 cloudinary.config(
-    cloud_name="dmbhhqmxf",
-    api_key="267234471199724",
-    api_secret="hZc5Bh9SR7LSL4Fy3tNAZsOhDbY",
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", "your_cloud_name"),
+    api_key=os.getenv("CLOUDINARY_API_KEY", "your_api_key"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET", "your_api_secret"),
 )
 
 # ------------ PROCTORING MEMORY --------------
@@ -77,7 +78,7 @@ def login():
             session['email'] = student['email']
             session['user_type'] = 'student'
             conn.close()
-            return redirect(url_for('preview'))
+            return redirect(url_for('student_dashboard'))
         conn.close()
         return "Invalid credentials"
     return render_template('login.html')
@@ -199,9 +200,6 @@ def quiz():
 def test():
     return render_template('student-dashboard.html')
 
-def student_dashboard():
-    return render_template('student-dashboard')
-
 @app.route("/submit", methods=['POST'])
 def submit():
     submitted_answers = request.form
@@ -218,6 +216,14 @@ def submit():
             if selected_option.lower() == correct_option.lower():
                 score += 1
     conn.close()
+    
+    # Clean up peer ID on exam submission
+    peer_id = request.form.get('peer_id') or session.get('peer_id')
+    if peer_id and peer_id in peer_ids:
+        peer_ids.remove(peer_id)
+        violation_counts.pop(peer_id, None)
+        print(f"🧹 Cleaned up peer ID on submission: {peer_id}")
+    
     percentage = (score / total) * 100 if total > 0 else 0
     return render_template("results.html", score=score, total=total, percentage=percentage, message="")
 
@@ -298,6 +304,11 @@ def upload_screenshot():
     # FaceMesh + gaze
     try:
         rgb_frame = frame[:, :, ::-1]  # BGR -> RGB
+        
+        # Add small delay to prevent timestamp conflicts
+        import time
+        time.sleep(0.001)  # 1ms delay
+        
         results = face_mesh_instance.process(rgb_frame)
         if results.multi_face_landmarks:
             landmarks = results.multi_face_landmarks[0].landmark
@@ -312,8 +323,9 @@ def upload_screenshot():
             suspicious = True
             reasons.append("Face not visible properly")
     except Exception as e:
-        suspicious = True
-        reasons.append(f"FaceMesh error: {str(e)}")
+        if "timestamp mismatch" not in str(e).lower():
+            suspicious = True
+            reasons.append(f"FaceMesh error: {str(e)}")
 
     # Brightness check
     brightness = check_brightness_fn(frame)
@@ -326,25 +338,30 @@ def upload_screenshot():
         violation_counts[peer_id] = violation_counts.get(peer_id, 0) + 1
         entry = create_violation_entry_fn(peer_id, reasons)
         violation_logs.append(entry)
+        print(f"⚠️ VIOLATION DETECTED for {peer_id}: {reasons}")
         screenshots_folder = os.path.join(app.static_folder, "screenshots")
         os.makedirs(screenshots_folder, exist_ok=True)
         filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.png"
         import cv2
         image_path = os.path.join(screenshots_folder, filename)
-        cv2.imwrite(image_path, yolo_frame)  # 🚀 CHANGED: Save ANNOTATED image!
+        cv2.imwrite(image_path, yolo_frame)
+        print(f"📸 Screenshot saved: {filename}")
         upload_result = upload_to_cloudinary_fn(image_path)
+        print(f"☁️ Screenshot uploaded to Cloudinary: {upload_result.get('secure_url')}")
         os.remove(image_path)
         response = {
             "message": "Suspicious activity detected",
             "cloudinary_url": upload_result.get("secure_url"),
             "public_id": upload_result.get("public_id"),
-            "reasons": reasons
+            "reasons": reasons,
+            "count": violation_counts[peer_id]
         }
         if violation_counts[peer_id] >= 5:
             response["action"] = "stop_exam"
         return jsonify(response)
 
-    return jsonify({"message": "No suspicion detected.", "reasons": reasons})
+    print(f"✅ No violations detected for {peer_id}")
+    return jsonify({"message": "No suspicion detected.", "reasons": []})
 
 # ------------  TAB / BROWSER VIOLATION ENDPOINT -----------------
 @app.route("/tab-violation", methods=["POST"])
