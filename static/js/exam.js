@@ -199,37 +199,32 @@
         if (now - lastFrameSentAt < FRAME_INTERVAL_MS) return;
         lastFrameSentAt = now;
 
-        const imageData = frameCanvas.toDataURL("image/png");
+        // Pipeline 0: Frame Transport Only
+        const imageData = frameCanvas.toDataURL("image/jpeg", 0.8); // Use JPEG for efficiency
         const payload = {
           image: imageData,
           peerId: studentPeerId || safeGetLocal("exam_peer_id")
         };
 
-        fetch(`${backendURL}/upload-screenshot`, {
+        // Fire-and-forget request to Pipeline 0
+        fetch(`${backendURL}/pipeline0/frame`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         })
-        .then(res => res.json().catch(()=>({})))
-        .then(data => {
-          if (data.reasons && data.reasons.length > 0) {
-            violationCount++;
-            showViolationPopup(data.reasons, violationCount);
-            updateViolationDisplay(data.reasons, violationCount);
-          }
-          if (data.action === "stop_exam") {
-            endExamDueToViolations();
-          }
-        })
         .catch(err => {
-          console.error("Frame upload error:", err);
+          console.error("Pipeline 0 frame transport error:", err);
         });
+        // Note: Ignoring response as per Pipeline 0 requirements
+        
       } catch (e) {
         console.error("Frame capture error:", e);
       }
     }, FRAME_INTERVAL_MS);
   }
 
+  // Note: Violation handling removed for Pipeline 0
+  // These functions kept for tab detection and other exam protection
   function endExamDueToViolations() {
     cleanupAndExit("Exam terminated due to repeated violations.");
   }

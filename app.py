@@ -235,6 +235,44 @@ check_brightness_fn = None
 upload_to_cloudinary_fn = None
 create_violation_entry_fn = None
 
+# ---------------- PIPELINE 0 & 1 -----------------
+pipeline1_local_checks_fn = None  # Lazy-loaded
+
+@app.route("/pipeline0/frame", methods=["POST"])
+def pipeline0_frame():
+    """Pipeline 0: Frame Transport Only - processes frames in memory without storage"""
+    global pipeline1_local_checks_fn
+    
+    # Lazy-load Pipeline 1 function
+    if pipeline1_local_checks_fn is None:
+        from utils.pipeline1_local_checks import pipeline1_local_checks
+        pipeline1_local_checks_fn = pipeline1_local_checks
+    
+    data = request.json
+    image_data = data.get("image")
+    peer_id = data.get("peerId")
+    
+    if not image_data:
+        return jsonify({"received": False, "error": "No image data"}), 400
+    
+    try:
+        # Decode Base64 image into OpenCV frame
+        image_bytes = base64.b64decode(image_data.split(",")[1])
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        frame = np.array(image)[:, :, ::-1].copy()  # RGB -> BGR for OpenCV
+        
+        # Pass frame to Pipeline 1 local checks
+        result = pipeline1_local_checks_fn(frame)
+        
+        # Return simple response - no storage, no violations, no cloud services
+        return jsonify({
+            "received": True,
+            "suspicious": result['suspicious']
+        })
+        
+    except Exception as e:
+        return jsonify({"received": False, "error": str(e)}), 400
+
 @app.route("/upload-screenshot", methods=["POST"])
 def upload_screenshot():
     global face_mesh_instance, run_yolo_fn, detect_faces_fn, check_brightness_fn, upload_to_cloudinary_fn, create_violation_entry_fn
