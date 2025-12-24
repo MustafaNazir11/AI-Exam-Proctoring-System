@@ -238,40 +238,48 @@ create_violation_entry_fn = None
 # ---------------- PIPELINE 0 & 1 -----------------
 pipeline1_local_checks_fn = None  # Lazy-loaded
 
-@app.route("/pipeline0/frame", methods=["POST"])
-def pipeline0_frame():
-    """Pipeline 0: Frame Transport Only - processes frames in memory without storage"""
+@app.route("/pipeline1/analyze", methods=["POST"])
+def pipeline1_analyze():
+    """Pipeline 1: Local Checks Only - no cloud services"""
     global pipeline1_local_checks_fn
     
-    # Lazy-load Pipeline 1 function
     if pipeline1_local_checks_fn is None:
         from utils.pipeline1_local_checks import pipeline1_local_checks
         pipeline1_local_checks_fn = pipeline1_local_checks
     
     data = request.json
     image_data = data.get("image")
-    peer_id = data.get("peerId")
     
     if not image_data:
-        return jsonify({"received": False, "error": "No image data"}), 400
+        return jsonify({"error": "No image data"}), 400
     
     try:
-        # Decode Base64 image into OpenCV frame
+        # Decode Base64 image
         image_bytes = base64.b64decode(image_data.split(",")[1])
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        frame = np.array(image)[:, :, ::-1].copy()  # RGB -> BGR for OpenCV
+        frame = np.array(image)[:, :, ::-1].copy()  # RGB -> BGR
         
-        # Pass frame to Pipeline 1 local checks
+        # Run Pipeline 1 local checks
         result = pipeline1_local_checks_fn(frame)
         
-        # Return simple response - no storage, no violations, no cloud services
-        return jsonify({
-            "received": True,
-            "suspicious": result['suspicious']
-        })
+        return jsonify(result)
         
     except Exception as e:
-        return jsonify({"received": False, "error": str(e)}), 400
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/pipeline0/frame", methods=["POST"])
+def pipeline0_frame():
+    """Pipeline 0: Frame Transport Only - no analysis, no storage"""
+    data = request.json
+    image_data = data.get("image")
+    peer_id = data.get("peerId")
+    
+    # If no image data, it means no browser activity was captured
+    if not image_data:
+        return jsonify({"received": False})
+    
+    # Pipeline 0 only transports frames - no processing
+    return jsonify({"received": True})
 
 @app.route("/upload-screenshot", methods=["POST"])
 def upload_screenshot():
