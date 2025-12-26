@@ -124,10 +124,97 @@ function createStudentCard(peerId) {
   studentGallery.appendChild(card);
 }
 
-// View violations for specific peer
+// View violations for specific peer using modal
 function viewViolations(peerId) {
-  window.open(`/violations/${peerId}`, '_blank');
+  // Show modal
+  const modal = document.getElementById('violationsModal');
+  const modalPeerId = document.getElementById('modalPeerId');
+  const violationsContent = document.getElementById('violationsContent');
+  
+  modalPeerId.textContent = peerId;
+  violationsContent.innerHTML = '<div style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading violations...</div>';
+  
+  modal.style.display = 'block';
+  
+  // Fetch violations data via API
+  fetch(`/api/violations/${peerId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.violations && data.violations.length > 0) {
+        let tableHTML = `
+          <table class="violations-table">
+            <thead>
+              <tr>
+                <th>Peer ID</th>
+                <th>Violation Time</th>
+                <th>Reasons</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        data.violations.forEach(log => {
+          tableHTML += `
+            <tr>
+              <td>${log.peer_id || 'N/A'}</td>
+              <td>${log.time || log.timestamp || 'N/A'}</td>
+              <td>
+                <ul>
+          `;
+          
+          if (log.reasons && log.reasons.length > 0) {
+            log.reasons.forEach(reason => {
+              tableHTML += `<li>${reason}</li>`;
+            });
+          } else {
+            tableHTML += '<li>No specific reason recorded</li>';
+          }
+          
+          tableHTML += `
+                </ul>
+              </td>
+            </tr>
+          `;
+        });
+        
+        tableHTML += `
+            </tbody>
+          </table>
+        `;
+        
+        violationsContent.innerHTML = tableHTML;
+      } else {
+        violationsContent.innerHTML = '<div class="no-violations">🚫 No violation logs found for this student.</div>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading violations:', error);
+      violationsContent.innerHTML = '<div class="no-violations">❌ Error loading violations. Please try again.</div>';
+    });
 }
+
+// Close violations modal
+function closeViolationsModal() {
+  document.getElementById('violationsModal').style.display = 'none';
+}
+
+// Close modal when clicking outside or pressing Escape
+window.onclick = function(event) {
+  const modal = document.getElementById('violationsModal');
+  if (event.target === modal) {
+    closeViolationsModal();
+  }
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const modal = document.getElementById('violationsModal');
+    if (modal.style.display === 'block') {
+      closeViolationsModal();
+    }
+  }
+});
 
 // Handle incoming calls from students
 peer.on("call", (call) => {

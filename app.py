@@ -150,6 +150,16 @@ def show_peer_violations(peer_id):
     peer_logs = [log for log in violation_logs if log.get('peer_id') == peer_id]
     return render_template("violations.html", logs=peer_logs, peer_id=peer_id)
 
+@app.route("/api/violations/<peer_id>")
+def get_peer_violations_api(peer_id):
+    """API endpoint for modal violations data"""
+    peer_logs = [log for log in violation_logs if log.get('peer_id') == peer_id]
+    return jsonify({
+        "peer_id": peer_id,
+        "violations": peer_logs,
+        "count": len(peer_logs)
+    })
+
 # ------------------ QUIZ ----------------------
 @app.route("/input-questions", methods=['GET', 'POST'])
 def input_questions():

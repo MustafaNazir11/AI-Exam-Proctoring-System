@@ -176,7 +176,7 @@
     {% endif %}
 
     <div class="btn-container">
-      <a href="{{ url_for('dashboard') }}" class="back-btn">
+      <a href="javascript:void(0)" class="back-btn" onclick="returnToDashboard()">
         <i class="fas fa-arrow-left"></i> Back to Proctor Dashboard
       </a>
     </div>
@@ -184,6 +184,12 @@
 
   <!-- Background animation -->
   <script>
+    // Function to return to dashboard properly
+    function returnToDashboard() {
+      sessionStorage.setItem('returnToDashboard', 'true');
+      window.location.href = '/dashboard';
+    }
+    
     const canvas=document.getElementById("bgCanvas");
     const ctx=canvas.getContext("2d");
     let w,h;
