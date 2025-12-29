@@ -10,6 +10,8 @@ from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
 from msrest.authentication import CognitiveServicesCredentials
 from io import BytesIO
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class VisionAnalyzer:

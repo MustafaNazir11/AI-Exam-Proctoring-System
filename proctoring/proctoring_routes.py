@@ -39,8 +39,14 @@ def init_proctoring_routes(app):
     def pipeline1_analyze():
         global pipeline1_local_checks_fn
         if pipeline1_local_checks_fn is None:
-            from utils.pipeline1_local_checks import pipeline1_local_checks
-            pipeline1_local_checks_fn = pipeline1_local_checks
+            try:
+                from utils.integrated_pipeline import integrated_pipeline_analysis
+                pipeline1_local_checks_fn = integrated_pipeline_analysis
+                print("✅ Using integrated pipeline (local + Azure)")
+            except ImportError:
+                from utils.pipeline1_local_checks import pipeline1_local_checks
+                pipeline1_local_checks_fn = pipeline1_local_checks
+                print("⚠️ Fallback to basic pipeline")
         
         image_data = request.json.get("image")
         if not image_data:
@@ -56,10 +62,39 @@ def init_proctoring_routes(app):
 
     @app.route("/pipeline0/frame", methods=["POST"])
     def pipeline0_frame():
-        return jsonify({"received": bool(request.json.get("image"))})
+        print("🔥 PIPELINE0 ROUTE CALLED!")  # Debug log
+        
+        # Get the frame data
+        data = request.json
+        peer_id, image_data = data.get("peerId"), data.get("image")
+        
+        if not peer_id or not image_data:
+            return jsonify({"received": False, "error": "Missing data"})
+        
+        try:
+            import cv2
+            image_bytes = base64.b64decode(image_data.split(",")[1])
+            image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            frame = np.array(image)[:, :, ::-1].copy()
+            
+            # Use integrated pipeline for analysis
+            from utils.integrated_pipeline import integrated_pipeline_analysis
+            print("✅ Using integrated pipeline in pipeline0")
+            pipeline_result = integrated_pipeline_analysis(frame)
+            print(f"Pipeline result: suspicious={pipeline_result['suspicious']}, azure_analyzed={pipeline_result['azure_analyzed']}")
+            
+            return jsonify({
+                "received": True, 
+                "pipeline_result": pipeline_result
+            })
+            
+        except Exception as e:
+            print(f"❌ Pipeline0 error: {e}")
+            return jsonify({"received": False, "error": str(e)})
 
     @app.route("/upload-screenshot", methods=["POST"])
     def upload_screenshot():
+        print("🔥 UPLOAD-SCREENSHOT ROUTE CALLED!")  # Debug log
         global face_mesh_instance, run_yolo_fn, detect_faces_fn, check_brightness_fn, upload_to_cloudinary_fn, create_violation_entry_fn
 
         # Lazy load ML components
@@ -98,46 +133,85 @@ def init_proctoring_routes(app):
         except Exception as e:
             return jsonify({"message": "Failed to decode image", "error": str(e)}), 400
 
-        suspicious, reasons = False, []
-        person_count, detections, yolo_frame = run_yolo_fn(frame)
-        faces, face_frame = detect_faces_fn(frame)
-
-        # Check violations
-        for label, conf, xyxy in detections:
-            suspicious = True
-            reasons.append(f"{label} detected")
-        if person_count > 1:
-            suspicious = True
-            reasons.append("Multiple people detected")
-        if len(faces) == 0:
-            suspicious = True
-            reasons.append("No face detected")
-
-        # FaceMesh gaze detection
+        # Use integrated pipeline for initial analysis
         try:
-            rgb_frame = frame[:, :, ::-1]
-            import time
-            time.sleep(0.001)
-            results = face_mesh_instance.process(rgb_frame)
-            if results.multi_face_landmarks:
-                landmarks = results.multi_face_landmarks[0].landmark
-                left_eye_ratio = landmarks[33].x - landmarks[133].x
-                right_eye_ratio = landmarks[362].x - landmarks[263].x
-                if abs(left_eye_ratio) < 0.03 or abs(right_eye_ratio) < 0.03:
-                    suspicious = True
-                    reasons.append("Possible looking away detected")
-            else:
-                suspicious = True
-                reasons.append("Face not visible properly")
-        except Exception as e:
-            if "timestamp mismatch" not in str(e).lower():
-                suspicious = True
-                reasons.append(f"FaceMesh error: {str(e)}")
+            from utils.integrated_pipeline import integrated_pipeline_analysis
+            print("✅ Using integrated pipeline (local + Azure)")
+            pipeline_result = integrated_pipeline_analysis(frame)
+            print(f"Pipeline result: suspicious={pipeline_result['suspicious']}, azure_analyzed={pipeline_result['azure_analyzed']}")
+            
+            # If integrated pipeline finds issues, proceed with detailed analysis
+            if pipeline_result['suspicious']:
+                suspicious, reasons = True, []
+                
+                # Add pipeline reasons
+                for check in pipeline_result['failed_checks']:
+                    reasons.append(f"Pipeline check failed: {check}")
+                
+                # Add Azure results if available
+                if pipeline_result['azure_results']:
+                    azure_results = pipeline_result['azure_results']
+                    if azure_results['face_count'] > 1:
+                        reasons.append("Multiple faces detected by Azure")
+                    elif azure_results['face_count'] == 0:
+                        reasons.append("No face detected by Azure")
+                    
+                    for indicator in azure_results['suspicious_indicators']:
+                        reasons.append(f"Azure detected: {indicator}")
+                
+                # Continue with existing YOLO and other checks for comprehensive analysis
+                person_count, detections, yolo_frame = run_yolo_fn(frame)
+                faces, face_frame = detect_faces_fn(frame)
 
-        # Brightness check
-        if check_brightness_fn(frame) > 200:
-            suspicious = True
-            reasons.append("High brightness - possible screen reflection")
+                # Check violations
+                for label, conf, xyxy in detections:
+                    reasons.append(f"{label} detected")
+                if person_count > 1:
+                    reasons.append("Multiple people detected")
+            else:
+                # Not suspicious according to integrated pipeline, skip heavy processing
+                return jsonify({"message": "No suspicion detected.", "reasons": []})
+                
+        except ImportError:
+            # Fallback to original detection method
+            print("⚠️ Fallback to basic pipeline - integrated pipeline not available")
+            suspicious, reasons = False, []
+            person_count, detections, yolo_frame = run_yolo_fn(frame)
+            faces, face_frame = detect_faces_fn(frame)
+
+            # Check violations
+            for label, conf, xyxy in detections:
+                suspicious = True
+                reasons.append(f"{label} detected")
+            if person_count > 1:
+                suspicious = True
+                reasons.append("Multiple people detected")
+            if len(faces) == 0:
+                suspicious = True
+                reasons.append("No face detected")
+
+        # FaceMesh gaze detection (only if suspicious)
+        if suspicious:
+            try:
+                rgb_frame = frame[:, :, ::-1]
+                import time
+                time.sleep(0.001)
+                results = face_mesh_instance.process(rgb_frame)
+                if results.multi_face_landmarks:
+                    landmarks = results.multi_face_landmarks[0].landmark
+                    left_eye_ratio = landmarks[33].x - landmarks[133].x
+                    right_eye_ratio = landmarks[362].x - landmarks[263].x
+                    if abs(left_eye_ratio) < 0.03 or abs(right_eye_ratio) < 0.03:
+                        reasons.append("Possible looking away detected")
+                else:
+                    reasons.append("Face not visible properly")
+            except Exception as e:
+                if "timestamp mismatch" not in str(e).lower():
+                    reasons.append(f"FaceMesh error: {str(e)}")
+
+            # Brightness check
+            if check_brightness_fn(frame) > 200:
+                reasons.append("High brightness - possible screen reflection")
 
         if suspicious:
             violation_counts[peer_id] = violation_counts.get(peer_id, 0) + 1
@@ -148,7 +222,10 @@ def init_proctoring_routes(app):
             os.makedirs(screenshots_folder, exist_ok=True)
             filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.png"
             image_path = os.path.join(screenshots_folder, filename)
-            cv2.imwrite(image_path, yolo_frame)
+            
+            # Use yolo_frame if available, otherwise original frame
+            frame_to_save = yolo_frame if 'yolo_frame' in locals() else frame
+            cv2.imwrite(image_path, frame_to_save)
             upload_result = upload_to_cloudinary_fn(image_path)
             os.remove(image_path)
             
