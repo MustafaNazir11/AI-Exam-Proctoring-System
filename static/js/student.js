@@ -76,35 +76,96 @@ document.addEventListener('DOMContentLoaded', function () {
     const quizContainer = document.querySelector(".quiz-container");
     let violationCount = 0;
     let peerId = null;
+    let studentStream = null;
 
-    // 🎥 Start webcam silently
+    // 🔗 Initialize PeerJS first
+    const peer = new Peer({
+        host: "0.peerjs.com",
+        port: 443,
+        secure: true
+    });
+
+    peer.on("open", id => {
+        peerId = id;
+        console.log("✅ Student Peer ID:", peerId);
+
+        // Register peer ID with server
+        fetch("/store-peer-id", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ peerId })
+        }).then(() => {
+            console.log("✅ Peer ID registered with server");
+        }).catch(err => {
+            console.error("❌ Failed to register peer ID:", err);
+        });
+    });
+
+    // 🎥 Start webcam after PeerJS is ready
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
             video.srcObject = stream;
-
+            studentStream = stream;
             console.log("✅ Student camera stream ready");
 
-            // 🔥 VERY IMPORTANT: answer proctor call
+            // 🔥 Handle incoming calls from proctor
             peer.on("call", (call) => {
-                console.log("📞 Incoming call from proctor");
-                call.answer(stream); // ✅ THIS WAS MISSING
+                console.log("📞 Incoming call from proctor:", call.peer);
+
+                // Answer with current stream
+                call.answer(studentStream);
+
+                call.on('error', (err) => {
+                    console.error("❌ Call error:", err);
+                });
+
+                call.on('close', () => {
+                    console.log("📞 Call closed by proctor");
+                });
             });
+
+            // Auto-call proctor if available (for initial connection)
+            setTimeout(() => {
+                callProctor();
+            }, 2000);
+
+            // Check for reconnect requests every 2 seconds
+            setInterval(() => {
+                if (peerId) {
+                    fetch(`/check-reconnect/${peerId}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.reconnect) {
+                                console.log('🔄 Reconnect requested, calling proctor...');
+                                callProctor();
+                            }
+                        })
+                        .catch(err => console.error('Failed to check reconnect:', err));
+                }
+            }, 2000);
         })
         .catch(() => {
             alert("⚠️ Camera access denied. Exam cannot proceed.");
         });
 
+    function callProctor() {
+        fetch('/get-proctor-ids')
+            .then(res => res.json())
+            .then(proctorIds => {
+                if (proctorIds.length > 0) {
+                    const proctorId = proctorIds[0];
+                    console.log("📞 Calling proctor:", proctorId);
+                    const call = peer.call(proctorId, studentStream);
 
-    // 🔗 Generate PeerJS ID
-    const peer = new Peer();
-    peer.on("open", id => {
-        peerId = id;
-        fetch("/store-peer-id", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ peerId })
-        });
-    });
+                    if (call) {
+                        call.on('error', (err) => {
+                            console.error("❌ Error calling proctor:", err);
+                        });
+                    }
+                }
+            })
+            .catch(err => console.error('Failed to get proctor IDs:', err));
+    }
 
     // 📸 Screenshot every 10s
     // 📸 Screenshot every 10s

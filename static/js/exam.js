@@ -293,14 +293,14 @@
     // Fullscreen enforcement
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement) {
-        sendTabViolation("Exited fullscreen");
+        // sendTabViolation("Exited fullscreen");
         try { document.documentElement.requestFullscreen().catch(()=>{}); } catch(e){}
       }
     });
 
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
-        sendTabViolation("Page hidden or switched tab");
+        // sendTabViolation("Page hidden or switched tab");
         try { document.title = "⚠ RETURN TO EXAM"; } catch(e){}
       } else {
         try { document.title = "Student Exam"; } catch(e){}
@@ -310,7 +310,7 @@
     });
 
     window.addEventListener("blur", () => {
-      sendTabViolation("Window lost focus (possible alt+tab)");
+      // sendTabViolation("Window lost focus (possible alt+tab)");
     });
 
     // Prevent shortcuts
@@ -326,7 +326,7 @@
       if (blocked) {
         e.preventDefault?.();
         e.stopPropagation?.();
-        sendTabViolation(`Blocked shortcut attempt: ${e.key}`);
+        // sendTabViolation(`Blocked shortcut attempt: ${e.key}`);
         return false;
       }
     }, true);
@@ -342,36 +342,36 @@
     });
   }
 
-  function sendTabViolation(reason) {
-    if (!reason) return;
+  // function sendTabViolation(reason) {
+  //   if (!reason) return;
 
-    const now = Date.now();
-    const last = lastViolationSent.get(reason) || 0;
-    if (now - last < VIOLATION_COOLDOWN_MS) return;
-    lastViolationSent.set(reason, now);
+  //   const now = Date.now();
+  //   const last = lastViolationSent.get(reason) || 0;
+  //   if (now - last < VIOLATION_COOLDOWN_MS) return;
+  //   lastViolationSent.set(reason, now);
 
-    const peerId = studentPeerId || safeGetLocal("exam_peer_id") || null;
-    fetch(`${backendURL}/tab-violation`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ peerId, reason })
-    })
-    .then(res => res.json().catch(() => ({})))
-    .then(data => {
-      console.log("Tab violation logged:", reason, data);
-      violationCount = data.count || violationCount + 1;
-      showViolationPopup([reason], violationCount);
-      updateViolationDisplay([reason], violationCount);
-      if (focusWarning) {
-        focusWarning.style.display = "block";
-        focusWarning.textContent = `⚠️ ${reason} — Violations: ${violationCount}`;
-      }
-      if (data.action === "stop_exam") {
-        endExamDueToViolations();
-      }
-    })
-    .catch(err => console.error("Tab violation send error:", err));
-  }
+  //   const peerId = studentPeerId || safeGetLocal("exam_peer_id") || null;
+  //   fetch(`${backendURL}/tab-violation`, {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({ peerId, reason })
+  //   })
+  //   .then(res => res.json().catch(() => ({})))
+  //   .then(data => {
+  //     console.log("Tab violation logged:", reason, data);
+  //     violationCount = data.count || violationCount + 1;
+  //     showViolationPopup([reason], violationCount);
+  //     updateViolationDisplay([reason], violationCount);
+  //     if (focusWarning) {
+  //       focusWarning.style.display = "block";
+  //       focusWarning.textContent = `⚠️ ${reason} — Violations: ${violationCount}`;
+  //     }
+  //     if (data.action === "stop_exam") {
+  //       endExamDueToViolations();
+  //     }
+  //   })
+  //   .catch(err => console.error("Tab violation send error:", err));
+  // }
 
   // ------------------ Cleanup ------------------
   window.addEventListener("unload", () => {

@@ -13,45 +13,27 @@ const studentGallery = document.getElementById("studentGallery");
 // Add manual test button to force connection
 function addTestButton() {
   if (document.getElementById('forceConnectBtn')) return;
-  
+
   const btn = document.createElement('button');
   btn.id = 'forceConnectBtn';
   btn.textContent = 'Force Connect Students';
   btn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:orange;color:white;border:none;cursor:pointer;';
-  btn.onclick = () => {
-    console.log('🔧 Forcing student connections...');
-    // Get current students and try to call them
-    fetch('/get-peer-ids')
-      .then(res => res.json())
-      .then(studentIds => {
-        console.log('📞 Attempting to call students:', studentIds);
-        studentIds.forEach(studentId => {
-          console.log('📞 Calling student:', studentId);
-          const call = peer.call(studentId, null); // Call student without sending video
-          if (call) {
-            call.on('stream', (stream) => {
-              console.log('🎥 Received stream from:', studentId);
-              const card = document.getElementById(`card-${studentId}`);
-              if (card) {
-                const video = card.querySelector('video');
-                video.srcObject = stream;
-                video.play();
-              }
-            });
-          }
-        });
-      });
-  };
+  btn.onclick = forceConnectStudents;
   document.body.appendChild(btn);
+}
+
+function forceConnectStudents() {
+  fetch('/request-reconnect', { method: 'POST' });
+  setTimeout(fetchActiveStudents, 1000);
 }
 
 // When admin PeerJS is ready
 peer.on("open", (adminPeerId) => {
   console.log("Proctor Peer ID:", adminPeerId);
   peerReady = true;
-  
+
   addTestButton();
-  
+
   // Register as proctor
   fetch("/store-peer-id", {
     method: "POST",
@@ -59,14 +41,14 @@ peer.on("open", (adminPeerId) => {
     body: JSON.stringify({ peerId: adminPeerId, type: "proctor" })
   }).then(() => {
     fetchActiveStudents();
-    
+
     // Refresh student list every 5 seconds
     setInterval(fetchActiveStudents, 5000);
   }).catch(err => console.error("Failed to register proctor:", err));
 });
 
 // Reconnect when page becomes visible (returning from violations page)
-document.addEventListener('visibilitychange', function() {
+document.addEventListener('visibilitychange', function () {
   if (!document.hidden && peerReady) {
     console.log('🔄 Page visible again, refreshing connections...');
     setTimeout(() => {
@@ -82,7 +64,7 @@ function fetchActiveStudents() {
     .then(res => res.json())
     .then(peerIds => {
       console.log("📋 Active students:", peerIds);
-      
+
       // Only add new students, don't recreate existing cards
       peerIds.forEach(peerId => {
         if (!document.getElementById(`card-${peerId}`)) {
@@ -90,7 +72,7 @@ function fetchActiveStudents() {
           callStudent(peerId);
         }
       });
-      
+
       // Remove cards for students no longer active
       const existingCards = document.querySelectorAll('.student-card');
       existingCards.forEach(card => {
@@ -130,12 +112,12 @@ function viewViolations(peerId) {
   const modal = document.getElementById('violationsModal');
   const modalPeerId = document.getElementById('modalPeerId');
   const violationsContent = document.getElementById('violationsContent');
-  
+
   modalPeerId.textContent = peerId;
   violationsContent.innerHTML = '<div style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading violations...</div>';
-  
+
   modal.style.display = 'block';
-  
+
   // Fetch violations data via API
   fetch(`/api/violations/${peerId}`)
     .then(response => response.json())
@@ -152,7 +134,7 @@ function viewViolations(peerId) {
             </thead>
             <tbody>
         `;
-        
+
         data.violations.forEach(log => {
           tableHTML += `
             <tr>
@@ -161,7 +143,7 @@ function viewViolations(peerId) {
               <td>
                 <ul>
           `;
-          
+
           if (log.reasons && log.reasons.length > 0) {
             log.reasons.forEach(reason => {
               tableHTML += `<li>${reason}</li>`;
@@ -169,19 +151,19 @@ function viewViolations(peerId) {
           } else {
             tableHTML += '<li>No specific reason recorded</li>';
           }
-          
+
           tableHTML += `
                 </ul>
               </td>
             </tr>
           `;
         });
-        
+
         tableHTML += `
             </tbody>
           </table>
         `;
-        
+
         violationsContent.innerHTML = tableHTML;
       } else {
         violationsContent.innerHTML = '<div class="no-violations">🚫 No violation logs found for this student.</div>';
@@ -199,7 +181,7 @@ function closeViolationsModal() {
 }
 
 // Close modal when clicking outside or pressing Escape
-window.onclick = function(event) {
+window.onclick = function (event) {
   const modal = document.getElementById('violationsModal');
   if (event.target === modal) {
     closeViolationsModal();
@@ -207,7 +189,7 @@ window.onclick = function(event) {
 }
 
 // Close modal with Escape key
-document.addEventListener('keydown', function(event) {
+document.addEventListener('keydown', function (event) {
   if (event.key === 'Escape') {
     const modal = document.getElementById('violationsModal');
     if (modal.style.display === 'block') {
@@ -219,37 +201,56 @@ document.addEventListener('keydown', function(event) {
 // Handle incoming calls from students
 peer.on("call", (call) => {
   console.log("📞 Incoming call from:", call.peer);
-  
+
   // Answer the call (proctor doesn't need to send video)
   call.answer();
-  
+
   call.on("stream", (stream) => {
     console.log("🎥 Stream received from:", call.peer);
-    
+
     let card = document.getElementById(`card-${call.peer}`);
     if (!card) {
       console.log("Creating card for new peer:", call.peer);
       createStudentCard(call.peer);
       card = document.getElementById(`card-${call.peer}`);
     }
-    
+
     if (card) {
       const video = card.querySelector("video");
+      const violationDiv = card.querySelector(".violation");
+
+      
+
       video.srcObject = stream;
       video.muted = true;
       video.play().then(() => {
         console.log("✅ Video playing for:", call.peer);
-      }).catch(err => console.warn("Autoplay blocked:", err));
-      
-      card.querySelector(".violation").innerText = "🟢 Connected";
+        violationDiv.innerText = "🟢 Connected";
+      }).catch(err => {
+        console.warn("Autoplay blocked:", err);
+        violationDiv.innerText = "⚠️ Click to play";
+
+        // Add click handler to manually start video
+        video.onclick = () => {
+          video.play().then(() => {
+            violationDiv.innerText = "🟢 Connected";
+            video.onclick = null;
+          });
+        };
+      });
     }
   });
-  
+
   call.on("error", (err) => {
     console.error("❌ Call error for", call.peer, err);
+    const card = document.getElementById(`card-${call.peer}`);
+    if (card) {
+      card.querySelector(".violation").innerText = "🔴 Connection error";
+    }
   });
-  
+
   call.on("close", () => {
+    console.log("📞 Call closed for:", call.peer);
     const card = document.getElementById(`card-${call.peer}`);
     if (card) {
       card.querySelector(".violation").innerText = "🔴 Disconnected";
