@@ -1,7 +1,14 @@
 from flask import render_template
 from auth.auth_routes import init_auth_routes
 from quiz.quiz_routes import init_quiz_routes
-from proctoring.proctoring_routes import init_proctoring_routes
+
+# Use enhanced proctoring with Azure CV
+try:
+    from proctoring.enhanced_proctoring_routes import init_enhanced_proctoring_routes as init_proctoring_routes
+    print("Enhanced proctoring loaded")
+except ImportError:
+    from proctoring.proctoring_routes import init_proctoring_routes
+    print("Using original proctoring")
 
 def init_routes(app):
     # Simple dashboard routes

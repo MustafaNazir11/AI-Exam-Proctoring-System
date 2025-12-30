@@ -59,7 +59,7 @@ class IntegratedPipeline:
         """Pipeline 2: Azure Face API for suspicious frames"""
         azure_detector = get_azure_face_detector()
         if not azure_detector:
-            print("⚠️ Azure detector not available")
+            print("⚠️ Azure Face detector not available")
             return None
 
         # 🔥 HARD VALIDATION (CRITICAL)
@@ -85,16 +85,17 @@ class IntegratedPipeline:
             print("❌ Frame encoding failed or too small")
             return None
 
-        print(f"🧪 Azure-ready frame: {frame.shape}, {len(encoded)} bytes")
+        print(f"🧪 Azure Face API ready frame: {frame.shape}, {len(encoded)} bytes")
 
         try:
             result = azure_detector.detect_faces_azure(frame)
             if 'error' in result:
-                print(f"⚠️ Azure API error: {result['error']}")
+                print(f"⚠️ Azure Face API error: {result['error']}")
                 return None
+            print(f"✅ Azure Face API result: {result['face_count']} faces detected")
             return result
         except Exception as e:
-            print(f"⚠️ Azure API exception: {e}")
+            print(f"⚠️ Azure Face API exception: {e}")
             return None
 
     def analyze_frame(self, frame):
