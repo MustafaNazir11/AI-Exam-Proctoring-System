@@ -30,6 +30,32 @@
   let lastViolationSent = new Map();
   let peer = null;
   let violationCount = 0;
+  let proctorConnections = new Map(); // Track proctor connections
+  let connectionAttempts = new Map(); // Track connection attempts
+
+  // Connection state management
+  function saveStudentState() {
+    const state = {
+      peerId: studentPeerId,
+      proctorConnections: Array.from(proctorConnections.keys()),
+      timestamp: Date.now()
+    };
+    safeSetLocal('studentConnectionState', JSON.stringify(state));
+  }
+
+  function loadStudentState() {
+    try {
+      const saved = safeGetLocal('studentConnectionState');
+      if (saved) {
+        const state = JSON.parse(saved);
+        // Only restore if less than 5 minutes old
+        if (Date.now() - state.timestamp < 300000) {
+          return state;
+        }
+      }
+    } catch (e) { console.warn('Failed to load student state:', e); }
+    return null;
+  }
 
   // ------------------ Utilities ------------------
   function safeSetLocal(key, value) {
@@ -60,11 +86,24 @@
       const peerIdField = document.getElementById("peer-id-field");
       if (peerIdField) peerIdField.value = id;
       
+      // Restore previous state if available
+      const savedState = loadStudentState();
+      if (savedState && savedState.peerId === id) {
+        console.log('🔄 Restoring student connection state');
+        savedState.proctorConnections.forEach(proctorId => {
+          connectionAttempts.set(proctorId, 0);
+        });
+      }
+      
       sendPeerIdToServer(id);
+      saveStudentState();
     });
 
     peer.on("call", (call) => {
       console.log("📞 Incoming call from proctor:", call.peer);
+      
+      // Store the connection
+      proctorConnections.set(call.peer, call);
       
       if (localStream) {
         console.log("✅ Answering call with stream");
@@ -76,11 +115,17 @@
       
       call.on("error", (err) => {
         console.error("❌ Call error:", err);
+        proctorConnections.delete(call.peer);
+        saveStudentState();
       });
       
       call.on("close", () => {
         console.log("📞 Call closed by proctor");
+        proctorConnections.delete(call.peer);
+        saveStudentState();
       });
+      
+      saveStudentState();
     });
   }
 
@@ -99,24 +144,34 @@
         
         proctorIds.forEach(proctorId => {
           if (proctorId !== studentPeerId) {
-            console.log("📞 Calling proctor:", proctorId);
-            
-            try {
-              const call = peer.call(proctorId, localStream);
+            // Check if already connected or recently attempted
+            const attempts = connectionAttempts.get(proctorId) || 0;
+            if (!proctorConnections.has(proctorId) && attempts < 3) {
+              console.log("📞 Calling proctor:", proctorId);
+              connectionAttempts.set(proctorId, attempts + 1);
               
-              if (call) {
-                console.log("✅ Call created successfully to:", proctorId);
+              try {
+                const call = peer.call(proctorId, localStream);
                 
-                call.on("error", (err) => {
-                  console.error("❌ Call to proctor failed:", proctorId, err);
-                });
-                
-                call.on("close", () => {
-                  console.log("📞 Call to proctor closed:", proctorId);
-                });
+                if (call) {
+                  console.log("✅ Call created successfully to:", proctorId);
+                  proctorConnections.set(proctorId, call);
+                  
+                  call.on("error", (err) => {
+                    console.error("❌ Call to proctor failed:", proctorId, err);
+                    proctorConnections.delete(proctorId);
+                  });
+                  
+                  call.on("close", () => {
+                    console.log("📞 Call to proctor closed:", proctorId);
+                    proctorConnections.delete(proctorId);
+                  });
+                  
+                  saveStudentState();
+                }
+              } catch (error) {
+                console.error("❌ Exception calling proctor:", proctorId, error);
               }
-            } catch (error) {
-              console.error("❌ Exception calling proctor:", proctorId, error);
             }
           }
         });
@@ -128,11 +183,35 @@
 
   function sendPeerIdToServer(peerId) {
     if (!peerId) return;
+    
+    const studentEmail = getStudentEmail();
+    const studentName = getStudentName();
+    
     fetch(`${backendURL}/store-peer-id`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ peerId })
+      body: JSON.stringify({ 
+        peerId, 
+        email: studentEmail,
+        name: studentName
+      })
     }).catch(err => console.error("Failed to send peer ID:", err));
+  }
+  
+  function getStudentEmail() {
+    // Use actual login email from session
+    return window.studentInfo?.email || 
+           sessionStorage.getItem('student_email') || 
+           new URLSearchParams(window.location.search).get('email') || 
+           'unknown@student.com';
+  }
+  
+  function getStudentName() {
+    // Use actual name from session
+    return window.studentInfo?.name || 
+           sessionStorage.getItem('student_name') || 
+           new URLSearchParams(window.location.search).get('name') || 
+           'Student';
   }
 
   // ------------------ Camera & Proctoring ------------------
@@ -165,6 +244,8 @@
       // Connect to proctor
       setTimeout(() => {
         connectToProctor();
+        // Set up periodic proctor detection
+        setInterval(connectToProctor, 10000); // Check every 10 seconds
       }, 2000);
 
       // Start frame capture for proctoring
@@ -240,13 +321,18 @@
       }
     } catch (e) { console.warn(e); }
 
-    // Delete peer ID from server
     const peerIdToDelete = studentPeerId || safeGetLocal("exam_peer_id");
+    const studentEmail = getStudentEmail();
+    
     if (peerIdToDelete) {
       fetch(`${backendURL}/delete-peer-id`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ peerId: peerIdToDelete, type: "student" })
+        body: JSON.stringify({ 
+          peerId: peerIdToDelete, 
+          type: "student",
+          email: studentEmail
+        })
       }).catch(e => console.warn("Cleanup error:", e));
     }
 
@@ -372,6 +458,14 @@
   //   })
   //   .catch(err => console.error("Tab violation send error:", err));
   // }
+
+  // Add visibility change handler to reconnect when page becomes visible
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && localStream && peer && !peer.destroyed) {
+      console.log('📱 Page visible, checking proctor connections...');
+      setTimeout(connectToProctor, 1000);
+    }
+  });
 
   // ------------------ Cleanup ------------------
   window.addEventListener("unload", () => {

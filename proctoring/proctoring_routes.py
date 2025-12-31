@@ -10,6 +10,7 @@ violation_counts = {}
 violation_logs = []
 reconnect_requests = set()
 proctor_ids = set()
+student_sessions = {}  # {email: {peerId, name, active}}
 
 # Lazy-loaded ML components
 face_mesh_instance = None
@@ -248,6 +249,12 @@ def init_proctoring_routes(app):
         reconnect_requests.update(peer_ids)
         return jsonify({"message": "Reconnect requested"})
 
+    @app.route("/trigger-student-reconnect", methods=["POST"])
+    def trigger_student_reconnect():
+        reconnect_requests.clear()
+        reconnect_requests.update(peer_ids)
+        return jsonify({"message": "Student reconnect triggered", "count": len(peer_ids)})
+
     @app.route("/check-reconnect/<peer_id>")
     def check_reconnect(peer_id):
         if peer_id in reconnect_requests:
@@ -255,10 +262,19 @@ def init_proctoring_routes(app):
             return jsonify({"reconnect": True})
         return jsonify({"reconnect": False})
 
+    @app.route("/check-proctor-reconnect/<peer_id>")
+    def check_proctor_reconnect(peer_id):
+        if peer_id in reconnect_requests:
+            reconnect_requests.discard(peer_id)
+            return jsonify({"reconnect": True})
+        return jsonify({"reconnect": False})
+
     @app.route("/store-peer-id", methods=["POST"])
     def store_peer_id():
         data = request.json
         peer_id, peer_type = data.get("peerId"), data.get("type", "student")
+        email = data.get("email")
+        name = data.get("name")
         
         if peer_id:
             if peer_type == "proctor":
@@ -266,12 +282,24 @@ def init_proctoring_routes(app):
             else:
                 peer_ids.discard(peer_id)
                 peer_ids.add(peer_id)
+                
+                # Track by email for students
+                if email:
+                    student_sessions[email] = {
+                        "peerId": peer_id,
+                        "name": name or email,
+                        "active": True
+                    }
             return jsonify({"message": "Peer ID stored", "peerId": peer_id})
         return jsonify({"message": "Peer ID missing"}), 400
 
     @app.route("/get-proctor-ids")
     def get_proctor_ids():
         return jsonify(list(proctor_ids))
+
+    @app.route("/get-student-sessions")
+    def get_student_sessions():
+        return jsonify(student_sessions)
 
     @app.route("/get-peer-ids")
     def get_peer_ids():
@@ -281,6 +309,7 @@ def init_proctoring_routes(app):
     def delete_peer_id():
         data = request.json
         peer_id, peer_type = data.get("peerId"), data.get("type", "student")
+        email = data.get("email")
         
         if peer_id:
             if peer_type == "proctor" and peer_id in proctor_ids:
@@ -288,6 +317,17 @@ def init_proctoring_routes(app):
             elif peer_id in peer_ids:
                 peer_ids.remove(peer_id)
                 violation_counts.pop(peer_id, None)
+                
+                # Remove from student sessions
+                if email and email in student_sessions:
+                    del student_sessions[email]
+                else:
+                    # Find by peer_id
+                    for email_key, session in list(student_sessions.items()):
+                        if session.get("peerId") == peer_id:
+                            del student_sessions[email_key]
+                            break
+                            
             return jsonify({"message": "Peer ID deleted", "peerId": peer_id})
         return jsonify({"message": "Peer ID not found"}), 404
 

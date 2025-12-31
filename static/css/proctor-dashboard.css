@@ -93,6 +93,24 @@ video {
   color: #333;
 }
 
+.student-name {
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.student-email {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.peer-id {
+  font-size: 0.8rem;
+  color: #888;
+  font-family: monospace;
+}
+
 .violation {
   color: var(--danger);
   font-weight: 600;

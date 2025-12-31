@@ -7,8 +7,37 @@ const peer = new Peer({
   secure: true
 });
 let peerReady = false;
+let activeConnections = new Map();
+let connectionStates = new Map();
+let studentSessions = new Map();
 
 const studentGallery = document.getElementById("studentGallery");
+
+// Connection state management
+function saveConnectionState() {
+  const state = {
+    activeConnections: Array.from(activeConnections.keys()),
+    connectionStates: Object.fromEntries(connectionStates),
+    timestamp: Date.now()
+  };
+  try {
+    sessionStorage.setItem('proctorConnectionState', JSON.stringify(state));
+  } catch (e) { console.warn('Failed to save connection state:', e); }
+}
+
+function loadConnectionState() {
+  try {
+    const saved = sessionStorage.getItem('proctorConnectionState');
+    if (saved) {
+      const state = JSON.parse(saved);
+      // Only restore if less than 5 minutes old
+      if (Date.now() - state.timestamp < 300000) {
+        return state;
+      }
+    }
+  } catch (e) { console.warn('Failed to load connection state:', e); }
+  return null;
+}
 
 // Add manual test button to force connection
 function addTestButton() {
@@ -23,7 +52,7 @@ function addTestButton() {
 }
 
 function forceConnectStudents() {
-  fetch('/request-reconnect', { method: 'POST' });
+  fetch('/trigger-student-reconnect', { method: 'POST' });
   setTimeout(fetchActiveStudents, 1000);
 }
 
@@ -40,6 +69,19 @@ peer.on("open", (adminPeerId) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ peerId: adminPeerId, type: "proctor" })
   }).then(() => {
+    // Restore previous connection state if available
+    const savedState = loadConnectionState();
+    if (savedState) {
+      console.log('🔄 Restoring connection state:', savedState);
+      savedState.activeConnections.forEach(peerId => {
+        connectionStates.set(peerId, savedState.connectionStates[peerId] || 'disconnected');
+      });
+    }
+    
+    // Trigger student reconnections
+    fetch('/trigger-student-reconnect', { method: 'POST' })
+      .catch(err => console.warn('Failed to trigger reconnect:', err));
+    
     fetchActiveStudents();
 
     // Refresh student list every 5 seconds
@@ -50,51 +92,87 @@ peer.on("open", (adminPeerId) => {
 // Reconnect when page becomes visible (returning from violations page)
 document.addEventListener('visibilitychange', function () {
   if (!document.hidden && peerReady) {
-    console.log('🔄 Page visible again, refreshing connections...');
+    console.log('🔄 Page visible again, restoring connections...');
     setTimeout(() => {
+      restoreConnections();
       fetchActiveStudents();
     }, 1000);
   }
 });
 
-
-// Fetch active student peer IDs
-function fetchActiveStudents() {
-  fetch("/get-peer-ids")
-    .then(res => res.json())
-    .then(peerIds => {
-      console.log("📋 Active students:", peerIds);
-
-      // Only add new students, don't recreate existing cards
-      peerIds.forEach(peerId => {
-        if (!document.getElementById(`card-${peerId}`)) {
-          createStudentCard(peerId);
-          callStudent(peerId);
-        }
-      });
-
-      // Remove cards for students no longer active
-      const existingCards = document.querySelectorAll('.student-card');
-      existingCards.forEach(card => {
-        const cardPeerId = card.id.replace('card-', '');
-        if (!peerIds.includes(cardPeerId)) {
-          card.remove();
-        }
-      });
-    })
-    .catch(err => console.error("Failed to fetch peer IDs", err));
+// Restore connections for existing peer IDs
+function restoreConnections() {
+  connectionStates.forEach((state, peerId) => {
+    const card = document.getElementById(`card-${peerId}`);
+    if (card && state === 'connected') {
+      const video = card.querySelector('video');
+      if (!video.srcObject) {
+        console.log('🔄 Attempting to restore connection for:', peerId);
+        // Mark as needing reconnection
+        connectionStates.set(peerId, 'reconnecting');
+        card.querySelector('.violation').innerText = '🔄 Reconnecting...';
+      }
+    }
+  });
+  saveConnectionState();
 }
 
 
-// Create UI card
-function createStudentCard(peerId) {
+// Fetch active student sessions
+function fetchActiveStudents() {
+  fetch("/get-student-sessions")
+    .then(res => res.json())
+    .then(sessions => {
+      console.log("📋 Active student sessions:", sessions);
+
+      Object.entries(sessions).forEach(([email, session]) => {
+        const peerId = session.peerId;
+        let card = document.getElementById(`card-${email}`);
+        
+        if (!card) {
+          createStudentCard(email, session.name, peerId);
+          connectionStates.set(peerId, 'connecting');
+        } else {
+          updateStudentCard(email, session.name, peerId);
+        }
+        
+        studentSessions.set(email, session);
+      });
+
+      // Remove inactive students
+      const existingCards = document.querySelectorAll('.student-card');
+      existingCards.forEach(card => {
+        const cardEmail = card.id.replace('card-', '');
+        if (!sessions[cardEmail]) {
+          const session = studentSessions.get(cardEmail);
+          if (session) {
+            activeConnections.delete(session.peerId);
+            connectionStates.delete(session.peerId);
+          }
+          card.remove();
+          studentSessions.delete(cardEmail);
+        }
+      });
+      
+      saveConnectionState();
+    })
+    .catch(err => console.error("Failed to fetch student sessions", err));
+}
+
+
+// Create student card
+function createStudentCard(email, name, peerId) {
   const card = document.createElement("div");
   card.className = "student-card";
-  card.id = `card-${peerId}`;
+  card.id = `card-${email}`;
 
   card.innerHTML = `
     <video autoplay playsinline muted></video>
-    <div class="info">Peer ID: ${peerId}</div>
+    <div class="info">
+      <div class="student-name">${name}</div>
+      <div class="student-email">${email}</div>
+      <div class="peer-id">Peer ID: ${peerId}</div>
+    </div>
     <div class="violation">🟢 Live</div>
     <div class="card-buttons">
       <button class="view-violations" onclick="viewViolations('${peerId}')">
@@ -104,6 +182,18 @@ function createStudentCard(peerId) {
   `;
 
   studentGallery.appendChild(card);
+}
+
+// Update student card
+function updateStudentCard(email, name, peerId) {
+  const card = document.getElementById(`card-${email}`);
+  if (card) {
+    const peerIdDiv = card.querySelector('.peer-id');
+    const violationsBtn = card.querySelector('.view-violations');
+    
+    if (peerIdDiv) peerIdDiv.textContent = `Peer ID: ${peerId}`;
+    if (violationsBtn) violationsBtn.setAttribute('onclick', `viewViolations('${peerId}')`);
+  }
 }
 
 // View violations for specific peer using modal
@@ -202,59 +292,76 @@ document.addEventListener('keydown', function (event) {
 peer.on("call", (call) => {
   console.log("📞 Incoming call from:", call.peer);
 
-  // Answer the call (proctor doesn't need to send video)
   call.answer();
+  activeConnections.set(call.peer, call);
+  connectionStates.set(call.peer, 'connecting');
 
   call.on("stream", (stream) => {
     console.log("🎥 Stream received from:", call.peer);
 
-    let card = document.getElementById(`card-${call.peer}`);
+    // Find card by peer ID
+    let card = null;
+    studentSessions.forEach((session, email) => {
+      if (session.peerId === call.peer) {
+        card = document.getElementById(`card-${email}`);
+      }
+    });
+    
     if (!card) {
-      console.log("Creating card for new peer:", call.peer);
-      createStudentCard(call.peer);
-      card = document.getElementById(`card-${call.peer}`);
+      console.log("No card found for peer:", call.peer);
+      return;
     }
 
-    if (card) {
-      const video = card.querySelector("video");
-      const violationDiv = card.querySelector(".violation");
+    const video = card.querySelector("video");
+    const violationDiv = card.querySelector(".violation");
 
-      
+    video.srcObject = stream;
+    video.muted = true;
+    video.play().then(() => {
+      console.log("✅ Video playing for:", call.peer);
+      violationDiv.innerText = "🟢 Connected";
+      connectionStates.set(call.peer, 'connected');
+      saveConnectionState();
+    }).catch(err => {
+      console.warn("Autoplay blocked:", err);
+      violationDiv.innerText = "⚠️ Click to play";
+      connectionStates.set(call.peer, 'ready');
 
-      video.srcObject = stream;
-      video.muted = true;
-      video.play().then(() => {
-        console.log("✅ Video playing for:", call.peer);
-        violationDiv.innerText = "🟢 Connected";
-      }).catch(err => {
-        console.warn("Autoplay blocked:", err);
-        violationDiv.innerText = "⚠️ Click to play";
-
-        // Add click handler to manually start video
-        video.onclick = () => {
-          video.play().then(() => {
-            violationDiv.innerText = "🟢 Connected";
-            video.onclick = null;
-          });
-        };
-      });
-    }
+      video.onclick = () => {
+        video.play().then(() => {
+          violationDiv.innerText = "🟢 Connected";
+          connectionStates.set(call.peer, 'connected');
+          saveConnectionState();
+          video.onclick = null;
+        });
+      };
+    });
   });
 
   call.on("error", (err) => {
     console.error("❌ Call error for", call.peer, err);
-    const card = document.getElementById(`card-${call.peer}`);
-    if (card) {
-      card.querySelector(".violation").innerText = "🔴 Connection error";
-    }
+    studentSessions.forEach((session, email) => {
+      if (session.peerId === call.peer) {
+        const card = document.getElementById(`card-${email}`);
+        if (card) card.querySelector(".violation").innerText = "🔴 Connection error";
+      }
+    });
+    connectionStates.set(call.peer, 'error');
+    activeConnections.delete(call.peer);
+    saveConnectionState();
   });
 
   call.on("close", () => {
     console.log("📞 Call closed for:", call.peer);
-    const card = document.getElementById(`card-${call.peer}`);
-    if (card) {
-      card.querySelector(".violation").innerText = "🔴 Disconnected";
-    }
+    studentSessions.forEach((session, email) => {
+      if (session.peerId === call.peer) {
+        const card = document.getElementById(`card-${email}`);
+        if (card) card.querySelector(".violation").innerText = "🔴 Disconnected";
+      }
+    });
+    connectionStates.set(call.peer, 'disconnected');
+    activeConnections.delete(call.peer);
+    saveConnectionState();
   });
 });
 

@@ -30,8 +30,26 @@ def init_quiz_routes(app):
     def exam():
         conn = get_db_connection()
         questions = conn.execute("SELECT * FROM questions").fetchall()
+        
+        # Get student info from session
+        student_email = session.get('email', 'unknown@student.com')
+        student_id = session.get('user_id')
+        student_name = 'Student'
+        
+        # Try to get student name from database
+        if student_id:
+            student_data = conn.execute("SELECT * FROM students WHERE id=?", (student_id,)).fetchone()
+            if student_data and 'name' in student_data.keys():
+                student_name = student_data['name']
+            elif student_data:
+                # Use email prefix as name if no name field
+                student_name = student_email.split('@')[0].title()
+        
         conn.close()
-        return render_template("exam.html", questions=questions)
+        return render_template("exam.html", 
+                             questions=questions, 
+                             student_email=student_email,
+                             student_name=student_name)
 
     @app.route("/quiz")
     def quiz():
