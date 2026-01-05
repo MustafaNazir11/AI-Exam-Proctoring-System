@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exam Control Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="header">
+    <h1><i class="fas fa-desktop"></i> Exam Control Dashboard</h1>
+    <button class="btn btn-secondary" onclick="window.location.href='/admin_dashboard'">
+      <i class="fas fa-arrow-left"></i> Back to Admin
+    </button>
+  </div>
+
+  <div class="stats" style="width: 90%; margin: 2rem auto;">
+    <div class="card stat-card animate-float">
+      <h3>Active Exams</h3>
+      <div class="number" id="activeCount">0</div>
+    </div>
+    <div class="card stat-card animate-float">
+      <h3>Paused Exams</h3>
+      <div class="number" id="pausedCount">0</div>
+    </div>
+    <div class="card stat-card animate-float">
+      <h3>Completed Today</h3>
+      <div class="number" id="endedCount">0</div>
+    </div>
+  </div>
+
+  <div class="card animate-fade-in" style="width: 90%; margin: 0 auto 2rem;">
+    <div class="main-header">
+      <h2><i class="fas fa-users"></i> Live Exam Sessions</h2>
+    </div>
+    <div id="sessionsList">
+      <div class="no-sessions">
+        <i class="fas fa-clipboard-list"></i>
+        <p>No active exam sessions</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let sessions = [];
+
+    async function loadExamSessions() {
+      try {
+        const response = await fetch('/api/admin/exam/sessions');
+        sessions = await response.json();
+        updateStats();
+        renderSessions();
+      } catch (error) {
+        console.error('Error loading sessions:', error);
+      }
+    }
+
+    function updateStats() {
+      const active = sessions.filter(s => s.status === 'active').length;
+      const paused = sessions.filter(s => s.status === 'paused').length;
+      const ended = sessions.filter(s => s.status === 'ended').length;
+      
+      document.getElementById('activeCount').textContent = active;
+      document.getElementById('pausedCount').textContent = paused;
+      document.getElementById('endedCount').textContent = ended;
+    }
+
+    function renderSessions() {
+      const container = document.getElementById('sessionsList');
+      
+      if (sessions.length === 0) {
+        container.innerHTML = `
+          <div class="no-sessions">
+            <i class="fas fa-clipboard-list" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+            <p>No active exam sessions</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = sessions.map(session => {
+        const progress = session.total_questions > 0 ? (session.current_question / session.total_questions) * 100 : 0;
+        const startTime = new Date(session.start_time).toLocaleTimeString();
+        
+        return `
+          <div class="session-item">
+            <div class="student-info">
+              <h4>${session.student_name}</h4>
+              <p>${session.student_email} • Started: ${startTime}</p>
+            </div>
+            
+            <div class="progress-info">
+              <span>Question ${session.current_question}/${session.total_questions}</span>
+              <div class="progress-container">
+                <div class="progress-bar" style="width: ${progress}%;"></div>
+              </div>
+            </div>
+            
+            <div class="status-badge ${session.status}">${session.status}</div>
+            
+            <div class="controls">
+              ${session.status === 'active' ? `
+                <button class="control-btn btn-warning" onclick="controlExam(${session.id}, 'pause')">
+                  <i class="fas fa-pause"></i> Pause
+                </button>
+                <button class="control-btn btn-danger" onclick="controlExam(${session.id}, 'end')">
+                  <i class="fas fa-stop"></i> End
+                </button>
+              ` : ''}
+              
+              ${session.status === 'paused' ? `
+                <button class="control-btn btn-success" onclick="controlExam(${session.id}, 'resume')">
+                  <i class="fas fa-play"></i> Resume
+                </button>
+                <button class="control-btn btn-danger" onclick="controlExam(${session.id}, 'end')">
+                  <i class="fas fa-stop"></i> End
+                </button>
+              ` : ''}
+              
+              ${session.status === 'ended' ? `
+                <button class="control-btn btn-primary" onclick="controlExam(${session.id}, 'restart')">
+                  <i class="fas fa-redo"></i> Restart
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function controlExam(sessionId, action) {
+      try {
+        const response = await fetch('/api/admin/exam/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, action })
+        });
+        
+        if (response.ok) {
+          loadExamSessions(); // Refresh the list
+        }
+      } catch (error) {
+        console.error('Error controlling exam:', error);
+      }
+    }
+
+    // Auto-refresh every 5 seconds
+    setInterval(loadExamSessions, 5000);
+    
+    // Initial load
+    loadExamSessions();
+
+    // Animated background
+    const canvas = document.getElementById("bgCanvas");
+    const ctx = canvas.getContext("2d");
+    let w, h;
+    let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let lines = [];
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    window.addEventListener("mousemove", (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      const moveX = (mouse.x / window.innerWidth) * 100;
+      const moveY = (mouse.y / window.innerHeight) * 100;
+      canvas.style.background = `radial-gradient(circle at ${moveX}% ${moveY}%, #b8dbff, #f3f8ff 85%)`;
+    });
+
+    for (let i = 0; i < 80; i++) {
+      lines.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        dx: (Math.random() - 0.5) * 2,
+        dy: (Math.random() - 0.5) * 2,
+        hue: 210 + Math.random() * 40
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      const glow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 200);
+      glow.addColorStop(0, "rgba(0,123,255,0.08)");
+      glow.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+      lines.forEach(l => {
+        l.x += l.dx; l.y += l.dy;
+        if (l.x < 0 || l.x > w) l.dx *= -1;
+        if (l.y < 0 || l.y > h) l.dy *= -1;
+        ctx.beginPath();
+        const x2 = l.x + Math.sin(Date.now() * 0.0015 + l.x * 0.02) * 25;
+        const y2 = l.y + Math.cos(Date.now() * 0.0015 + l.y * 0.02) * 25;
+        ctx.moveTo(l.x, l.y);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = `hsla(${l.hue}, 100%, 50%, 0.15)`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+      requestAnimationFrame(draw);
+    }
+    draw();
+  </script>
+</body>
+</html>

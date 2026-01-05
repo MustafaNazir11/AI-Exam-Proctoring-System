@@ -533,6 +533,11 @@
         progressBar.style.width = progress + '%';
       }
       
+      // Update exam session progress
+      if (typeof updateExamProgress === 'function') {
+        updateExamProgress(index + 1);
+      }
+      
       // Update button visibility
       if (prevBtn) prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
       if (nextBtn) nextBtn.style.display = index === totalQuestions - 1 ? 'none' : 'inline-block';

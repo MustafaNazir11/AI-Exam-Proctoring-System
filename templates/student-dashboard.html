@@ -7,322 +7,76 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      --accent: #007bff;
-      --accent-light: #66b3ff;
-      --text-dark: #1f1f1f;
-      --bg-card: rgba(255,255,255,0.8);
-      --shadow-light: rgba(0,0,0,0.05);
-      --sidebar-bg: rgba(255,255,255,0.65);
-    }
-
-    * { margin:0; padding:0; box-sizing:border-box; }
-
-    body {
-      font-family:'Poppins',sans-serif;
-      background:linear-gradient(135deg,#e6f1ff 0%,#ffffff 100%);
-      min-height:100vh;
-      overflow:hidden;
-      color:var(--text-dark);
-    }
-
-    #bgCanvas {
-      position:fixed;
-      inset:0;
-      z-index:-1;
-      background:radial-gradient(circle at center,#b5d8ff,#f3f8ff);
-    }
-
-    .dashboard-container {
-      display:grid;
-      grid-template-columns:260px 1fr;
-      height:100vh;
-      backdrop-filter:blur(10px);
-    }
-
-    /* Sidebar */
-    .sidebar {
-      background:var(--sidebar-bg);
-      box-shadow:4px 0 15px var(--shadow-light);
-      padding:2rem 1rem;
-      display:flex;
-      flex-direction:column;
-      justify-content:space-between;
-    }
-
-    .brand {
-      text-align:center;
-      margin-bottom:2rem;
-    }
-
-    .brand i {
-      font-size:2.5rem;
-      color:var(--accent);
-      margin-bottom:10px;
-    }
-
-    .brand h2 {
-      color:#333;
-      font-weight:600;
-    }
-
-    .nav-menu {
-      list-style:none;
-      padding:0;
-    }
-
-    .nav-menu li {
-      margin-bottom:0.8rem;
-    }
-
-    .nav-menu a {
-      text-decoration:none;
-      color:#333;
-      padding:0.7rem 1rem;
-      display:flex;
-      align-items:center;
-      border-radius:10px;
-      transition:all 0.3s ease;
-    }
-
-    .nav-menu a i {
-      margin-right:10px;
-      color:var(--accent);
-    }
-
-    .nav-menu a:hover {
-      background:rgba(255,255,255,0.8);
-      color:var(--accent);
-      box-shadow:0 0 12px rgba(0,120,255,0.2);
-      transform:translateX(5px);
-    }
-
-    /* Main content */
-    .main-content {
-      padding:2rem 3rem;
-      overflow-y:auto;
-    }
-
-    .header {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:2rem;
-    }
-
-    .page-title h1 {
-      color:var(--accent);
-      font-size:1.8rem;
-    }
-
-    .page-title p {
-      color:#555;
-    }
-
-    .user-actions {
-      display:flex;
-      gap:1rem;
-    }
-
-    .action-btn {
-      width:40px;
-      height:40px;
-      border:none;
-      border-radius:50%;
-      background:white;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      box-shadow:0 4px 10px rgba(0,0,0,0.1);
-      transition:all 0.3s ease;
-    }
-
-    .action-btn:hover {
-      background:var(--accent);
-      color:white;
-      transform:translateY(-3px);
-    }
-
-    /* Stats cards */
-    .stats-container {
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-      gap:1.5rem;
-      margin-bottom:2rem;
-    }
-
-    .stat-card {
-      background:var(--bg-card);
-      border-radius:16px;
-      padding:1.5rem;
-      box-shadow:0 6px 20px rgba(0,0,0,0.05);
-      display:flex;
-      align-items:center;
-      transition:transform 0.3s ease;
-    }
-
-    .stat-card:hover {
-      transform:translateY(-6px);
-      box-shadow:0 8px 25px rgba(0,120,255,0.15);
-    }
-
-    .stat-icon {
-      width:60px;
-      height:60px;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:1.5rem;
-      margin-right:1rem;
-      background:linear-gradient(135deg,#dbeafe,#ffffff);
-      color:var(--accent);
-    }
-
-    .stat-info h3 {
-      font-size:1.4rem;
-      color:#333;
-    }
-
-    .stat-info p {
-      color:#666;
-    }
-
-    /* Exam Table */
-    .exam-table {
-      background:var(--bg-card);
-      border-radius:16px;
-      box-shadow:0 4px 20px rgba(0,0,0,0.05);
-      overflow:hidden;
-      animation:fadeUp 0.6s ease-out;
-    }
-
-    table {
-      width:100%;
-      border-collapse:collapse;
-    }
-
-    th, td {
-      padding:1rem;
-      border-bottom:1px solid rgba(0,0,0,0.05);
-    }
-
-    th {
-      background:var(--accent);
-      color:white;
-      text-align:left;
-    }
-
-    tr:hover {
-      background:rgba(0,123,255,0.05);
-    }
-
-    .exam-status {
-      display:inline-block;
-      padding:0.3rem 0.8rem;
-      border-radius:12px;
-      font-size:0.85rem;
-      font-weight:500;
-    }
-
-    .status-upcoming {
-      background:#fff3cd;
-      color:#856404;
-    }
-
-    .status-active {
-      background:#d4edda;
-      color:#155724;
-    }
-
-    .exam-action {
-      background:var(--accent);
-      color:white;
-      border:none;
-      padding:0.5rem 1rem;
-      border-radius:8px;
-      cursor:pointer;
-      transition:all 0.3s ease;
-    }
-
-    .exam-action:hover {
-      background:var(--accent-light);
-      transform:translateY(-3px);
-    }
-
-    @keyframes fadeUp {
-      from {opacity:0; transform:translateY(30px);}
-      to {opacity:1; transform:translateY(0);}
-    }
-
-    @media(max-width:768px) {
-      .dashboard-container {grid-template-columns:1fr;}
-      .sidebar {flex-direction:row; overflow-x:auto;}
-      .main-content {padding:1rem;}
-    }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
 
 <body>
   <canvas id="bgCanvas"></canvas>
 
-  <div class="dashboard-container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div>
-        <div class="brand">
-          <i class="fas fa-robot"></i>
-          <h2>AI Proctor</h2>
-        </div>
-
-        <ul class="nav-menu">
-          <li><a href="/preview"><i class="fas fa-video"></i> Camera Preview</a></li>
-          <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
-          <li><a href="#" id="dashboard-link"><i class="fas fa-home"></i> Dashboard</a></li>
-          <li><a href="#"><i class="fas fa-chart-line"></i> Performance</a></li>
-          <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
-          <li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
+  <div class="dashboard">
+    <aside class="sidebar animate-slide-in">
+      <div class="brand">
+        <i class="fas fa-robot"></i>
+        <span>AI <span class="highlight">Proctor</span></span>
       </div>
+
+      <nav class="menu">
+        <a href="/preview"><i class="fas fa-video"></i> Camera Preview</a>
+        <a href="/profile"><i class="fas fa-user"></i> Profile</a>
+        <a href="#" id="dashboard-link"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="#"><i class="fas fa-chart-line"></i> Performance</a>
+        <a href="#"><i class="fas fa-cog"></i> Settings</a>
+      </nav>
+
+      <button class="logout-btn" id="logout-link">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
     </aside>
 
-    <!-- Main content -->
-    <div class="main-content">
-      <div class="header">
-        <div class="page-title">
-          <h1>Student Dashboard</h1>
-          <p>Welcome back! Here's your exam schedule</p>
-        </div>
+    <main class="main-content">
+      <header class="main-header">
+        <h1>Student Dashboard</h1>
+        <p>Welcome back! Here's your exam schedule</p>
+      </header>
 
-        <div class="user-actions">
-          <button class="action-btn" title="Notifications"><i class="fas fa-bell"></i></button>
-          <button class="action-btn" title="Messages"><i class="fas fa-envelope"></i></button>
-          <button class="action-btn" title="Help"><i class="fas fa-question-circle"></i></button>
+      <div class="stats">
+        <div class="card stat-card animate-float">
+          <div style="display: flex; align-items: center;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 1rem; background: linear-gradient(135deg, #dbeafe, #ffffff); color: var(--accent);">
+              <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.4rem; color: var(--text-dark); margin-bottom: 0.25rem;">4</h3>
+              <p style="color: var(--text-muted);">Upcoming Exams</p>
+            </div>
+          </div>
+        </div>
+        <div class="card stat-card animate-float">
+          <div style="display: flex; align-items: center;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 1rem; background: linear-gradient(135deg, #dbeafe, #ffffff); color: var(--accent);">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.4rem; color: var(--text-dark); margin-bottom: 0.25rem;">2</h3>
+              <p style="color: var(--text-muted);">Completed</p>
+            </div>
+          </div>
+        </div>
+        <div class="card stat-card animate-float">
+          <div style="display: flex; align-items: center;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 1rem; background: linear-gradient(135deg, #dbeafe, #ffffff); color: var(--accent);">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.4rem; color: var(--text-dark); margin-bottom: 0.25rem;">1</h3>
+              <p style="color: var(--text-muted);">Pending Results</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Stats Cards -->
-      <div class="stats-container">
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
-          <div class="stat-info"><h3>4</h3><p>Upcoming Exams</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-          <div class="stat-info"><h3>2</h3><p>Completed</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fas fa-clock"></i></div>
-          <div class="stat-info"><h3>1</h3><p>Pending Results</p></div>
-        </div>
-      </div>
-
-      <!-- Exam Table -->
-      <div class="exam-table">
-        <table>
+      <div class="table-container animate-fade-in">
+        <table class="table">
           <thead>
             <tr>
               <th>St.No</th>
@@ -340,31 +94,31 @@
             <tr>
               <td>1</td><td>CS1012</td><td>PROBLEM SOLVING & PROGRAMMING</td><td>24-25_52_ESE</td>
               <td>GSAID 92 2425</td><td>09-06-2025</td><td>10:30 to 11:30</td>
-              <td><span class="exam-status status-upcoming">Upcoming</span></td>
-              <td><button class="exam-action">View Details</button></td>
+              <td><span class="status-badge" style="background: #fef3c7; color: #92400e;">Upcoming</span></td>
+              <td><button class="btn btn-secondary exam-action">View Details</button></td>
             </tr>
             <tr>
               <td>2</td><td>HS1073</td><td>INDIAN KNOWLEDGE SYSTEM</td><td>24-25_52_ESE</td>
               <td>IKS ESE GSAI D</td><td>12-06-2025</td><td>10:30 to 11:30</td>
-              <td><span class="exam-status status-upcoming">Upcoming</span></td>
-              <td><button class="exam-action">View Details</button></td>
+              <td><span class="status-badge" style="background: #fef3c7; color: #92400e;">Upcoming</span></td>
+              <td><button class="btn btn-secondary exam-action">View Details</button></td>
             </tr>
             <tr>
               <td>3</td><td>G11019</td><td>Computer Organization</td><td>24-25_52_ESE</td>
               <td>ESE MCO EXAM</td><td>10-06-2025</td><td>10:30 to 11:30</td>
-              <td><span class="exam-status status-active">Active</span></td>
-              <td><button class="exam-action">Start Exam</button></td>
+              <td><span class="status-badge active">Active</span></td>
+              <td><button class="btn btn-primary exam-action">Start Exam</button></td>
             </tr>
             <tr>
               <td>4</td><td>G11020</td><td>Web Development</td><td>24-25_52_ESE</td>
               <td>GSAI_D_ESE</td><td>11-06-2025</td><td>10:30 to 11:30</td>
-              <td><span class="exam-status status-upcoming">Upcoming</span></td>
-              <td><button class="exam-action">View Details</button></td>
+              <td><span class="status-badge" style="background: #fef3c7; color: #92400e;">Upcoming</span></td>
+              <td><button class="btn btn-secondary exam-action">View Details</button></td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </main>
   </div>
 
   <!-- Animated Background -->

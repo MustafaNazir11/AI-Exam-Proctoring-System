@@ -94,8 +94,11 @@ document.addEventListener('DOMContentLoaded', function () {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ peerId })
-        }).then(() => {
-            console.log("✅ Peer ID registered with server");
+        }).then(response => {
+            console.log('📋 Store peer ID response status:', response.status);
+            return response.json();
+        }).then(data => {
+            console.log("✅ Peer ID registered with server:", data);
         }).catch(err => {
             console.error("❌ Failed to register peer ID:", err);
         });
@@ -128,6 +131,13 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
                 callProctor();
             }, 2000);
+            
+            // Add manual call button for testing
+            const callBtn = document.createElement('button');
+            callBtn.textContent = 'Manual Call Proctor';
+            callBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:green;color:white;border:none;cursor:pointer;';
+            callBtn.onclick = callProctor;
+            document.body.appendChild(callBtn);
 
             // Check for reconnect requests every 2 seconds
             setInterval(() => {
@@ -149,22 +159,41 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
     function callProctor() {
+        console.log('🔍 Attempting to call proctor...');
         fetch('/get-proctor-ids')
             .then(res => res.json())
             .then(proctorIds => {
+                console.log('📋 Available proctor IDs:', proctorIds);
                 if (proctorIds.length > 0) {
                     const proctorId = proctorIds[0];
                     console.log("📞 Calling proctor:", proctorId);
+                    
+                    if (!studentStream) {
+                        console.error('❌ No student stream available for call');
+                        return;
+                    }
+                    
                     const call = peer.call(proctorId, studentStream);
 
                     if (call) {
+                        console.log('✅ Call initiated successfully');
                         call.on('error', (err) => {
                             console.error("❌ Error calling proctor:", err);
                         });
+                        
+                        call.on('close', () => {
+                            console.log('📞 Call to proctor closed');
+                        });
+                    } else {
+                        console.error('❌ Failed to create call object');
                     }
+                } else {
+                    console.warn('⚠️ No proctor IDs available');
                 }
             })
-            .catch(err => console.error('Failed to get proctor IDs:', err));
+            .catch(err => {
+                console.error('❌ Failed to get proctor IDs:', err);
+            });
     }
 
     // 📸 Screenshot every 10s

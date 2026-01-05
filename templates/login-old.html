@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login – AI Proctoring System</title>
+
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Keep Flask’s CSS link for logic -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+</head>
+
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="login-wrapper">
+    <form method="POST" class="login-card">
+      <h2><i class="fas fa-lock"></i> Login</h2>
+
+      <label for="email">Email</label>
+      <div class="input-group">
+        <i class="fas fa-envelope icon"></i>
+        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+      </div>
+
+      <label for="password">Password</label>
+      <div class="input-group">
+        <i class="fas fa-key icon"></i>
+        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+      </div>
+
+      <button type="submit" class="login-btn">
+        <i class="fas fa-sign-in-alt"></i> Log In
+      </button>
+
+      <div class="links">
+        <a href="/register" class="register-link">
+          <i class="fas fa-user-plus"></i> Don’t have an account? Register
+        </a>
+        <a href="/admin-login" class="admin-link">
+          <i class="fas fa-user-shield"></i> Admin Login
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // === Animated Background ===
+    const canvas = document.getElementById("bgCanvas");
+    const ctx = canvas.getContext("2d");
+    let w, h;
+    let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let lines = [];
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    window.addEventListener("mousemove", (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      const moveX = (mouse.x / window.innerWidth) * 100;
+      const moveY = (mouse.y / window.innerHeight) * 100;
+      canvas.style.background = `radial-gradient(circle at ${moveX}% ${moveY}%, #b8dbff, #f3f8ff 85%)`;
+    });
+
+    for (let i = 0; i < 100; i++) {
+      lines.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        dx: (Math.random() - 0.5) * 2,
+        dy: (Math.random() - 0.5) * 2,
+        hue: 210 + Math.random() * 40
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      const glow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 200);
+      glow.addColorStop(0, "rgba(0, 123, 255, 0.08)");
+      glow.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+      lines.forEach(l => {
+        l.x += l.dx; l.y += l.dy;
+        if (l.x < 0 || l.x > w) l.dx *= -1;
+        if (l.y < 0 || l.y > h) l.dy *= -1;
+        ctx.beginPath();
+        const x2 = l.x + Math.sin(Date.now() * 0.0015 + l.x * 0.02) * 35;
+        const y2 = l.y + Math.cos(Date.now() * 0.0015 + l.y * 0.02) * 35;
+        ctx.moveTo(l.x, l.y);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = `hsla(${l.hue}, 100%, 50%, 0.2)`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+      requestAnimationFrame(draw);
+    }
+    draw();
+  </script>
+
+  <style>
+    :root {
+      --accent: #007bff;
+      --accent-light: #66b3ff;
+      --text-dark: #1f1f1f;
+      --bg-card: rgba(255, 255, 255, 0.75);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      color: var(--text-dark);
+      overflow: hidden;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #e6f1ff 0%, #ffffff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    #bgCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: radial-gradient(circle at center, #b5d8ff, #f3f8ff);
+    }
+
+    .login-wrapper {
+      width: 90%;
+      max-width: 400px;
+      animation: fadeUp 0.7s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      backdrop-filter: blur(20px);
+      padding: 40px 30px;
+      text-align: center;
+    }
+
+    .login-card h2 {
+      color: var(--accent);
+      margin-bottom: 25px;
+      font-weight: 600;
+      font-size: 1.8rem;
+      text-shadow: 0 0 8px rgba(0,123,255,0.2);
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin: 10px 0 5px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .input-group .icon {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      color: var(--accent);
+      opacity: 0.7;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 15px 12px 38px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.9);
+      font-size: 1rem;
+      color: #1a1a1a;        /* ✅ Visible dark text */
+      caret-color: #007bff;  /* ✅ Blue blinking cursor */
+      transition: border-color 0.3s, background 0.3s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      background: #ffffff;
+      color: #111;
+      outline: none;
+    }
+
+    .login-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 4px 15px rgba(0,123,255,0.25);
+      transition: background 0.3s, transform 0.3s;
+    }
+
+    .login-btn:hover {
+      background: var(--accent-light);
+      transform: translateY(-3px);
+    }
+
+    .links {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .links a {
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .register-link {
+      color: #22c55e;
+    }
+
+    .admin-link {
+      color: var(--accent);
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</body>
+</html>
+

@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Dashboard - ProctorExam</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
 </head>
 
 <body>
@@ -24,6 +25,7 @@
         <a href="{{ request.path }}"><i class="fas fa-home"></i> Dashboard</a>
         <a href="{{ url_for('input_questions') }}"><i class="fas fa-upload"></i> Upload Test</a>
         <a href="{{ url_for('dashboard') }}"><i class="fas fa-desktop"></i> Monitor Exams</a>
+        <a href="{{ url_for('exam_control') }}"><i class="fas fa-cogs"></i> Exam Control</a>
         <a href="instruction.html"><i class="fas fa-info-circle"></i> Instructions</a>
         <a href="#"><i class="fas fa-cogs"></i> Settings</a>
       </nav>
@@ -51,16 +53,16 @@
         </div>
       </section>
 
-      <section class="features" style="margin-top:2rem;">
-        <div class="card feature">
+      <section class="stats" style="margin-top:2rem;">
+        <div class="card feature animate-float">
           <h2><i class="fas fa-upload"></i> Upload Test</h2>
           <p>Create and upload exams with configuration and start times.</p>
-          <button class="btn-primary" id="uploadBtn">Go</button>
+          <button class="btn btn-primary" id="uploadBtn">Go</button>
         </div>
-        <div class="card feature">
+        <div class="card feature animate-float">
           <h2><i class="fas fa-desktop"></i> Monitor Exams</h2>
           <p>View ongoing exams and track suspicious activity in real-time.</p>
-          <button class="btn-secondary" id="monitorBtn">Go</button>
+          <button class="btn btn-secondary" id="monitorBtn">Go</button>
         </div>
       </section>
     </main>

@@ -4,51 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login – AI Proctoring System</title>
-
-  <!-- Fonts & Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <!-- Keep Flask’s CSS link for logic -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
 
 <body>
   <canvas id="bgCanvas"></canvas>
 
-  <div class="login-wrapper">
-    <form method="POST" class="login-card">
-      <h2><i class="fas fa-lock"></i> Login</h2>
+  <div class="page-container" style="justify-content: center; align-items: center;">
+    <div class="form-container animate-fade-in">
+      <form method="POST">
+        <div class="main-header">
+          <h1><i class="fas fa-lock"></i> Login</h1>
+        </div>
 
-      <label for="email">Email</label>
-      <div class="input-group">
-        <i class="fas fa-envelope icon"></i>
-        <input type="email" id="email" name="email" placeholder="Enter your email" required>
-      </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <div style="position: relative;">
+            <i class="fas fa-envelope" style="position: absolute; top: 50%; left: 12px; transform: translateY(-50%); color: var(--accent); opacity: 0.7;"></i>
+            <input type="email" id="email" name="email" class="form-control" style="padding-left: 38px;" placeholder="Enter your email" required>
+          </div>
+        </div>
 
-      <label for="password">Password</label>
-      <div class="input-group">
-        <i class="fas fa-key icon"></i>
-        <input type="password" id="password" name="password" placeholder="Enter your password" required>
-      </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div style="position: relative;">
+            <i class="fas fa-key" style="position: absolute; top: 50%; left: 12px; transform: translateY(-50%); color: var(--accent); opacity: 0.7;"></i>
+            <input type="password" id="password" name="password" class="form-control" style="padding-left: 38px;" placeholder="Enter your password" required>
+          </div>
+        </div>
 
-      <button type="submit" class="login-btn">
-        <i class="fas fa-sign-in-alt"></i> Log In
-      </button>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          <i class="fas fa-sign-in-alt"></i> Log In
+        </button>
 
-      <div class="links">
-        <a href="/register" class="register-link">
-          <i class="fas fa-user-plus"></i> Don’t have an account? Register
-        </a>
-        <a href="/admin-login" class="admin-link">
-          <i class="fas fa-user-shield"></i> Admin Login
-        </a>
-      </div>
-    </form>
+        <div style="margin-top: 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 0.5rem;">
+          <a href="/register" class="btn btn-success" style="text-decoration: none;">
+            <i class="fas fa-user-plus"></i> Don't have an account? Register
+          </a>
+          <a href="/admin-login" class="btn btn-secondary" style="text-decoration: none;">
+            <i class="fas fa-user-shield"></i> Admin Login
+          </a>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script>
-    // === Animated Background ===
+    // Animated Background
     const canvas = document.getElementById("bgCanvas");
     const ctx = canvas.getContext("2d");
     let w, h;
@@ -104,155 +108,5 @@
     }
     draw();
   </script>
-
-  <style>
-    :root {
-      --accent: #007bff;
-      --accent-light: #66b3ff;
-      --text-dark: #1f1f1f;
-      --bg-card: rgba(255, 255, 255, 0.75);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Poppins', sans-serif;
-      color: var(--text-dark);
-      overflow: hidden;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #e6f1ff 0%, #ffffff 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-    }
-
-    #bgCanvas {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background: radial-gradient(circle at center, #b5d8ff, #f3f8ff);
-    }
-
-    .login-wrapper {
-      width: 90%;
-      max-width: 400px;
-      animation: fadeUp 0.7s ease-out;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(40px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .login-card {
-      background: var(--bg-card);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      backdrop-filter: blur(20px);
-      padding: 40px 30px;
-      text-align: center;
-    }
-
-    .login-card h2 {
-      color: var(--accent);
-      margin-bottom: 25px;
-      font-weight: 600;
-      font-size: 1.8rem;
-      text-shadow: 0 0 8px rgba(0,123,255,0.2);
-    }
-
-    label {
-      display: block;
-      text-align: left;
-      margin: 10px 0 5px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .input-group {
-      position: relative;
-      margin-bottom: 20px;
-    }
-
-    .input-group .icon {
-      position: absolute;
-      top: 50%;
-      left: 12px;
-      transform: translateY(-50%);
-      color: var(--accent);
-      opacity: 0.7;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px 15px 12px 38px;
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 8px;
-      background: rgba(255,255,255,0.9);
-      font-size: 1rem;
-      color: #1a1a1a;        /* ✅ Visible dark text */
-      caret-color: #007bff;  /* ✅ Blue blinking cursor */
-      transition: border-color 0.3s, background 0.3s;
-    }
-
-    input:focus {
-      border-color: var(--accent);
-      background: #ffffff;
-      color: #111;
-      outline: none;
-    }
-
-    .login-btn {
-      background: var(--accent);
-      color: white;
-      border: none;
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      margin-top: 10px;
-      box-shadow: 0 4px 15px rgba(0,123,255,0.25);
-      transition: background 0.3s, transform 0.3s;
-    }
-
-    .login-btn:hover {
-      background: var(--accent-light);
-      transform: translateY(-3px);
-    }
-
-    .links {
-      margin-top: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      text-align: center;
-    }
-
-    .links a {
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.3s ease;
-    }
-
-    .register-link {
-      color: #22c55e;
-    }
-
-    .admin-link {
-      color: var(--accent);
-    }
-
-    .links a:hover {
-      text-decoration: underline;
-    }
-  </style>
 </body>
 </html>
-

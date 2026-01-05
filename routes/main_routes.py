@@ -1,6 +1,7 @@
 from flask import render_template
 from auth.auth_routes import init_auth_routes
 from quiz.quiz_routes import init_quiz_routes
+from exam_control.exam_control_routes import init_exam_control_routes
 
 # Use enhanced proctoring with Azure CV
 try:
@@ -36,6 +37,10 @@ def init_routes(app):
     def dashboard():
         return render_template("proctor-dashboard.html")
 
+    @app.route("/exam-control")
+    def exam_control():
+        return render_template("exam-control.html")
+
     @app.route('/test')
     def test():
         return render_template('student-dashboard.html')
@@ -44,3 +49,4 @@ def init_routes(app):
     init_auth_routes(app)
     init_quiz_routes(app)
     init_proctoring_routes(app)
+    init_exam_control_routes(app)

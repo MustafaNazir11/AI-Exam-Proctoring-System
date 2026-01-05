@@ -45,11 +45,18 @@ def init_quiz_routes(app):
                 # Use email prefix as name if no name field
                 student_name = student_email.split('@')[0].title()
         
+        # Check for existing exam session
+        exam_session = conn.execute(
+            "SELECT * FROM exam_sessions WHERE student_email=? AND status IN ('active', 'paused') ORDER BY start_time DESC LIMIT 1",
+            (student_email,)
+        ).fetchone()
+        
         conn.close()
         return render_template("exam.html", 
                              questions=questions, 
                              student_email=student_email,
-                             student_name=student_name)
+                             student_name=student_name,
+                             exam_session=dict(exam_session) if exam_session else None)
 
     @app.route("/quiz")
     def quiz():
